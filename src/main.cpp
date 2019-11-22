@@ -9,6 +9,7 @@
 using namespace std;
 
 vec3 color(const ray& r);
+bool hit_sphere(const vec3& center, float radius, const ray& r);
 
 /*
  * main
@@ -61,7 +62,11 @@ int main(int argc, char * argv[])
 	return 0;
 }
 
-vec3 color(const ray& r) {
+vec3 color(const ray& r)
+{
+	if (hit_sphere(vec3(0, 0, -1), 0.5, r))
+		return vec3(1, 0, 0);
+
 	// Sky color is a linear interpolation b/w while & blue
 
 	vec3 unit_direction = unit_vector(r.direction());
@@ -71,5 +76,17 @@ vec3 color(const ray& r) {
 	float t = 0.5 * (unit_direction.y() + 1.0);
 
 	return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+}
+
+bool hit_sphere(const vec3& center, float radius, const ray& r)
+{
+	// Solve t^2 dot(B,B) + 2t dot(B,A-C) + dot(A-C, A-C)-R^2 = 0
+	vec3 oc = r.origin() - center; // A-C
+	float a = dot(r.direction(), r.direction());
+	float b = 2.0 * dot(r.direction(), oc);
+	float c = dot(oc, oc) - radius*radius;
+
+	float discriminant = b*b - 4*a*c;
+	return (discriminant > 0);
 }
 
