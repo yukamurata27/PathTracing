@@ -14,6 +14,7 @@ using namespace std;
 
 vec3 color(const ray& r, hittable * world);
 bool hit_sphere(const vec3& center, float radius, const ray& r);
+vec3 random_in_unit_sphere();
 
 /*
  * main
@@ -63,6 +64,8 @@ int main(int argc, char * argv[]) {
 				col += color(r, world);
 			}
 			col /= float(ns); // average sum
+			// gamma correction (brighter color)
+			col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
 
 			int ir = int(255.99	* col[0]);
 			int ig = int(255.99	* col[1]);
@@ -80,8 +83,12 @@ int main(int argc, char * argv[]) {
 
 vec3 color(const ray& r, hittable * world) {
 	hit_record rec;
-	if (world->hit(r, 0.0, MAXFLOAT, rec)) {
-		return 0.5*vec3(rec.normal.x()+1, rec.normal.y()+1, rec.normal.z()+1);
+	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
+		// Bounce the ray
+		// Sphere center at rec.p + rec.normal
+		vec3 target = rec.p + rec.normal + random_in_unit_sphere();
+		// 50% reflectors
+        return 0.5 * color(ray(rec.p, target - rec.p), world);
 	} else {
 		// Sky color is a linear interpolation b/w while & blue
 
@@ -104,5 +111,17 @@ bool hit_sphere(const vec3& center, float radius, const ray& r) {
 
 	float discriminant = b*b - 4*a*c;
 	return (discriminant > 0);
+}
+
+vec3 random_in_unit_sphere() {
+	vec3 p;
+
+	// Keep getting a random point on a unit sphere until we get one
+	do {
+		// map from [0, 1) to [-1, 1) where -vec3(1,1,1) is offset
+		p = 2.0*vec3(random_double(), random_double(), random_double()) - vec3(1,1,1);
+	} while (p.squared_length() >= 1.0);
+
+	return p;
 }
 
