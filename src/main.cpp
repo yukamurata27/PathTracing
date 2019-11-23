@@ -7,6 +7,8 @@
 #include "float.h"
 #include "../include/hittable_list.h"
 #include "../include/sphere.h"
+#include "../include/camera.h"
+#include "../include/random.h"
 
 using namespace std;
 
@@ -32,6 +34,7 @@ int main(int argc, char * argv[]) {
 	ofstream outfile;
 	int nx = 200;
 	int ny = 100;
+	int ns = 100;
 
 	outfile.open ("output.ppm");
 	outfile << "P3\n" << nx << " " << ny << "\n255\n";
@@ -45,16 +48,21 @@ int main(int argc, char * argv[]) {
 	list[0] = new sphere(vec3(0, 0, -1), 0.5);
 	list[1] = new sphere(vec3(0, -100.5, -1), 100);
 	hittable *world = new hittable_list(list, 2);
+	camera cam;
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
 		for (int i = 0; i < nx; i++) {
-			float u = float(i) / float(nx);
-			float v = float(j) / float(ny);
-			ray r(origin, lower_left_corner + u*horizontal + v*vertical);
-
-			//vec3 p = r.point_at_parameter(2.0);
-            vec3 col = color(r, world);
+			// Super sampling
+			vec3 col(0, 0, 0);
+			for (int s = 0; s < ns; s++) {
+				// Offset by random_double value [0, 1)
+				float u = float(i + random_double()) / float(nx);
+				float v = float(j + random_double()) / float(ny);
+				ray r = cam.get_ray(u, v);
+				col += color(r, world);
+			}
+			col /= float(ns); // average sum
 
 			int ir = int(255.99	* col[0]);
 			int ig = int(255.99	* col[1]);
