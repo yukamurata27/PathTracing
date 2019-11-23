@@ -147,7 +147,7 @@ int main(int argc, char * argv[]) {
 	list[4] = new sphere(vec3(-1,0,-1), -0.45, new dielectric(1.5));
 	hittable *world = new hittable_list(list, 5);
 
-	camera cam;
+	camera cam(vec3(-2,2,1), vec3(0,0,-1), vec3(0,1,0), 90, float(nx)/float(ny));
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
