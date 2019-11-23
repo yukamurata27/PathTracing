@@ -10,11 +10,64 @@
 #include "../include/camera.h"
 #include "../include/random.h"
 
+
 using namespace std;
 
-vec3 color(const ray& r, hittable * world);
+vec3 color(const ray& r, hittable *world, int depth);
 bool hit_sphere(const vec3& center, float radius, const ray& r);
 vec3 random_in_unit_sphere();
+vec3 reflect(const vec3& v, const vec3& n);
+
+class material {
+	public:
+		virtual bool scatter(
+			const ray& r_in,
+			const hit_record& rec,
+			vec3& attenuation,
+			ray& scattered) const = 0;
+};
+
+class lambertian : public material {
+	public:
+		lambertian(const vec3& a) : albedo(a) {}
+
+		virtual bool scatter(const ray& r_in,
+							const hit_record& rec,
+							vec3& attenuation,
+							ray& scattered) const {
+			vec3 target = rec.p + rec.normal + random_in_unit_sphere();
+			scattered = ray(rec.p, target-rec.p);
+			attenuation = albedo;
+			return true;
+		}
+
+		vec3 albedo;
+};
+
+class metal : public material {
+	public:
+		metal(const vec3& a, float f) : albedo(a) {
+			if (f < 1) fuzz = f; else fuzz = 1;
+		}
+
+		virtual bool scatter(const ray& r_in, const hit_record& rec,
+							 vec3& attenuation, ray& scattered) const {
+			vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
+			scattered = ray(rec.p, reflected);
+			attenuation = albedo;
+			return (dot(scattered.direction(), rec.normal) > 0);
+		}
+
+		vec3 albedo;
+		float fuzz;
+};
+
+vec3 reflect(const vec3& v, const vec3& n) {
+	// R+L = 2*dot(L, N)*N
+	// R = -L + 2*dot(L, N)*N where V = -L
+	// R = V - 2*dot(V, N)*N
+	return v - 2*dot(v,n)*n;
+}
 
 /*
  * main
@@ -45,10 +98,13 @@ int main(int argc, char * argv[]) {
 	vec3 vertical(0.0, 2.0, 0.0);   // step interval
 	vec3 origin(0.0, 0.0, 0.0);
 
-	hittable *list[2];
-	list[0] = new sphere(vec3(0, 0, -1), 0.5);
-	list[1] = new sphere(vec3(0, -100.5, -1), 100);
-	hittable *world = new hittable_list(list, 2);
+	hittable *list[4];
+	list[0] = new sphere(vec3(0,0,-1), 0.5, new lambertian(vec3(0.8, 0.3, 0.3)));
+	list[1] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
+	list[2] = new sphere(vec3(1,0,-1), 0.5, new metal(vec3(0.8, 0.6, 0.2), 0.3));
+	list[3] = new sphere(vec3(-1,0,-1), 0.5, new metal(vec3(0.8, 0.8, 0.8), 1.0));
+	hittable *world = new hittable_list(list,4);
+
 	camera cam;
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
@@ -61,7 +117,7 @@ int main(int argc, char * argv[]) {
 				float u = float(i + random_double()) / float(nx);
 				float v = float(j + random_double()) / float(ny);
 				ray r = cam.get_ray(u, v);
-				col += color(r, world);
+				col += color(r, world, 0);
 			}
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
@@ -81,14 +137,16 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
-vec3 color(const ray& r, hittable * world) {
+vec3 color(const ray& r, hittable *world, int depth) {
 	hit_record rec;
 	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
-		// Bounce the ray
-		// Sphere center at rec.p + rec.normal
-		vec3 target = rec.p + rec.normal + random_in_unit_sphere();
-		// 50% reflectors
-        return 0.5 * color(ray(rec.p, target - rec.p), world);
+		ray scattered;
+		vec3 attenuation;
+		
+		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+			return attenuation*color(scattered, world, depth+1);
+		else
+			return vec3(0,0,0);			
 	} else {
 		// Sky color is a linear interpolation b/w while & blue
 
