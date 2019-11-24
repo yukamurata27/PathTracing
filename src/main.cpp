@@ -7,6 +7,7 @@
 #include "float.h"
 #include "../include/hittable_list.h"
 #include "../include/sphere.h"
+#include "../include/moving_sphere.h"
 #include "../include/camera.h"
 #include "../include/random.h"
 
@@ -34,12 +35,9 @@ class lambertian : public material {
 	public:
 		lambertian(const vec3& a) : albedo(a) {}
 
-		virtual bool scatter(const ray& r_in,
-							const hit_record& rec,
-							vec3& attenuation,
-							ray& scattered) const {
+		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const {
 			vec3 target = rec.p + rec.normal + random_in_unit_sphere();
-			scattered = ray(rec.p, target-rec.p);
+			scattered = ray(rec.p, target-rec.p, r_in.time());
 			attenuation = albedo;
 			return true;
 		}
@@ -130,8 +128,8 @@ int main(int argc, char * argv[]) {
 	ofstream outfile;
 	//int nx = 200;
 	//int ny = 100;
-	int nx = 1200;
-	int ny = 800;
+	int nx = 400;
+	int ny = 200;
 	int ns = 100;
 
 	outfile.open ("output.ppm");
@@ -152,13 +150,38 @@ int main(int argc, char * argv[]) {
 	hittable *world = new hittable_list(list, 5);
 	*/
 
-	hittable *world = random_scene();
+	hittable *list[4];
+	list[0] = new moving_sphere(vec3(0,0,-1), vec3(0,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										)
+					);
+	list[1] = new moving_sphere(vec3(1,0,-1), vec3(1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										)
+					);
+	list[2] = new moving_sphere(vec3(-1,0,-1), vec3(-1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										)
+					);
+	list[3] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
+	hittable *world = new hittable_list(list, 4);
+
+	//hittable *world = random_scene();
 
 	vec3 lookfrom(3,3,2);
 	vec3 lookat(0,0,-1);
 	float dist_to_focus = (lookfrom-lookat).length();
-	float aperture = 2.0;
-	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus);
+	float aperture = 0.0;
+	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
