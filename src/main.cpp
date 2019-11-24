@@ -10,6 +10,8 @@
 #include "../include/moving_sphere.h"
 #include "../include/camera.h"
 #include "../include/random.h"
+#include "../include/constant_texture.h"
+#include "../include/checker_texture.h"
 
 
 using namespace std;
@@ -21,6 +23,8 @@ vec3 reflect(const vec3& v, const vec3& n);
 bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted);
 float schlick(float cosine, float ref_idx);
 hittable *random_scene();
+hittable *two_spheres();
+
 
 class material {
 	public:
@@ -33,16 +37,16 @@ class material {
 
 class lambertian : public material {
 	public:
-		lambertian(const vec3& a) : albedo(a) {}
+		lambertian(texture *a) : albedo(a) {}
 
 		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const {
 			vec3 target = rec.p + rec.normal + random_in_unit_sphere();
 			scattered = ray(rec.p, target-rec.p, r_in.time());
-			attenuation = albedo;
+			attenuation = albedo->value(0, 0, rec.p);
 			return true;
 		}
 
-		vec3 albedo;
+		texture *albedo;
 };
 
 class metal : public material {
@@ -128,8 +132,8 @@ int main(int argc, char * argv[]) {
 	ofstream outfile;
 	//int nx = 200;
 	//int ny = 100;
-	int nx = 400;
-	int ny = 200;
+	int nx = 500;
+	int ny = 300;
 	int ns = 100;
 
 	outfile.open ("output.ppm");
@@ -150,38 +154,61 @@ int main(int argc, char * argv[]) {
 	hittable *world = new hittable_list(list, 5);
 	*/
 
+	/*
 	hittable *list[4];
 	list[0] = new moving_sphere(vec3(0,0,-1), vec3(0,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(
+									new lambertian(new constant_texture(
 											vec3(random_double()*random_double(),
 											random_double()*random_double(),
 											random_double()*random_double())
-										)
+										))
 					);
 	list[1] = new moving_sphere(vec3(1,0,-1), vec3(1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(
+									new lambertian(new constant_texture(
 											vec3(random_double()*random_double(),
 											random_double()*random_double(),
 											random_double()*random_double())
-										)
+										))
 					);
 	list[2] = new moving_sphere(vec3(-1,0,-1), vec3(-1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(
+									new lambertian(new constant_texture(
 											vec3(random_double()*random_double(),
 											random_double()*random_double(),
 											random_double()*random_double())
-										)
+										))
 					);
-	list[3] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
+	list[3] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(new constant_texture(vec3(0.5, 0.5, 0.5))));
 	hittable *world = new hittable_list(list, 4);
+	*/
+	
+	hittable *world = two_spheres();
 
-	//hittable *world = random_scene();
-
+	// For close look
+	/*
 	vec3 lookfrom(3,3,2);
 	vec3 lookat(0,0,-1);
 	float dist_to_focus = (lookfrom-lookat).length();
 	float aperture = 0.0;
 	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+	*/
+
+	// For random_scene
+	/*
+	vec3 lookfrom(13,2,3);
+	vec3 lookat(0,0,0);
+	float dist_to_focus = 10.0;
+	float aperture = 0.0;
+	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+	*/
+
+	// For two_spheres
+	vec3 lookfrom(13,2,3);
+	vec3 lookat(0,0,0);
+	float dist_to_focus = 10.0;
+	float aperture = 0.0;
+	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+
+
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
@@ -302,21 +329,36 @@ float schlick(float cosine, float ref_idx) {
 }
 
 hittable *random_scene() {
-	int n = 500;
-	hittable **list = new hittable*[n+1];
-	list[0] =  new sphere(vec3(0,-1000,0), 1000, new lambertian(vec3(0.5, 0.5, 0.5)));
+	int n = 8; // Only use mulptiole of 4
+	int arr_size = pow(4, n/4)+4;
+	hittable **list = new hittable*[arr_size];
+
+	// Checker ground
+	texture *checker = new checker_texture(
+    						new constant_texture(vec3(0.2, 0.3, 0.1)),
+    						new constant_texture(vec3(0.9, 0.9, 0.9)));
+	list[0] = new sphere(vec3(0,-1000,0), 1000, new lambertian(checker));
+
+	// Plane ground
+	//list[0] =  new sphere(vec3(0,-1000,0), 1000, new lambertian(new constant_texture(vec3(0.5, 0.5, 0.5))));
+	
 	int i = 1;
-	for (int a = -11; a < 11; a++) {
-		for (int b = -11; b < 11; b++) {
+	for (int a = -n/4; a < n/4; a++) {
+		for (int b = -n/4; b < n/4; b++) {
 			float choose_mat = random_double();
-			vec3 center(a+0.9*random_double(),0.2,b+0.9*random_double());
+			vec3 center(a+2.5*random_double(),0.2,b+2.5*random_double());
+
 			if ((center-vec3(4,0.2,0)).length() > 0.9) {
 				if (choose_mat < 0.8) {  // diffuse
-					list[i++] = new sphere(center, 0.2,
-						new lambertian(vec3(random_double()*random_double(),
-											random_double()*random_double(),
-											random_double()*random_double())
-						)
+					list[i++] = new moving_sphere(
+						center,
+						center+vec3(0, 0.5*random_double(), 0),
+						0.0, 1.0, 0.2,
+						new lambertian(new constant_texture(
+							vec3(random_double()*random_double(),
+								random_double()*random_double(),
+								random_double()*random_double())
+						))
 					);
 				}
 				else if (choose_mat < 0.95) { // metal
@@ -334,10 +376,24 @@ hittable *random_scene() {
 	}
 
 	list[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
-	list[i++] = new sphere(vec3(-4, 1, 0), 1.0, new lambertian(vec3(0.4, 0.2, 0.1)));
+	list[i++] = new sphere(vec3(-4, 1, 0), 1.0, new lambertian(new constant_texture(vec3(0.4, 0.2, 0.1))));
 	list[i++] = new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0));
 
 	return new hittable_list(list,i);
+}
+
+hittable *two_spheres() {
+	texture *checker = new checker_texture(
+		new constant_texture(vec3(0.2, 0.3, 0.1)),
+		new constant_texture(vec3(0.9, 0.9, 0.9))
+	);
+
+	int n = 50;
+	hittable **list = new hittable*[n+1];
+	list[0] = new sphere(vec3(0,-10, 0), 10, new lambertian(checker));
+	list[1] = new sphere(vec3(0, 10, 0), 10, new lambertian(checker));
+
+	return new hittable_list(list,2);
 }
 
 
