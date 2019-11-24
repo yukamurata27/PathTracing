@@ -19,6 +19,7 @@ vec3 random_in_unit_sphere();
 vec3 reflect(const vec3& v, const vec3& n);
 bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted);
 float schlick(float cosine, float ref_idx);
+hittable *random_scene();
 
 class material {
 	public:
@@ -93,15 +94,15 @@ class dielectric : public material {
 				// Randomize refraction and reflection nicely
 				reflect_prob = schlick(schlick_cosine, ref_idx);
 			}
-            else reflect_prob = 1.0;
+			else reflect_prob = 1.0;
 
-            // Based on the probability, return refracted or reflected ray
-            if (random_double() < reflect_prob) {
-               scattered = ray(rec.p, reflected);
-            }
-            else {
-               scattered = ray(rec.p, refracted);
-            }
+			// Based on the probability, return refracted or reflected ray
+			if (random_double() < reflect_prob) {
+			   scattered = ray(rec.p, reflected);
+			}
+			else {
+			   scattered = ray(rec.p, refracted);
+			}
 
 			return true;
 		}
@@ -115,7 +116,7 @@ class dielectric : public material {
  *
  * Under src directory...
  * Compile: g++ -std=c++11 main.cpp vec3.cpp -o main
- * Run:     ./main
+ * Run:	    ./main
  *
 */
 int main(int argc, char * argv[]) {
@@ -127,8 +128,10 @@ int main(int argc, char * argv[]) {
 	//}
 
 	ofstream outfile;
-	int nx = 200;
-	int ny = 100;
+	//int nx = 200;
+	//int ny = 100;
+	int nx = 1200;
+	int ny = 800;
 	int ns = 100;
 
 	outfile.open ("output.ppm");
@@ -139,6 +142,7 @@ int main(int argc, char * argv[]) {
 	vec3 vertical(0.0, 2.0, 0.0);   // step interval
 	vec3 origin(0.0, 0.0, 0.0);
 
+	/*
 	hittable *list[5];
 	list[0] = new sphere(vec3(0,0,-1), 0.5, new lambertian(vec3(0.1, 0.2, 0.5)));
 	list[1] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
@@ -146,6 +150,9 @@ int main(int argc, char * argv[]) {
 	list[3] = new sphere(vec3(-1,0,-1), 0.5, new dielectric(1.5));
 	list[4] = new sphere(vec3(-1,0,-1), -0.45, new dielectric(1.5));
 	hittable *world = new hittable_list(list, 5);
+	*/
+
+	hittable *world = random_scene();
 
 	vec3 lookfrom(3,3,2);
 	vec3 lookat(0,0,-1);
@@ -266,9 +273,48 @@ vec3 reflect(const vec3& v, const vec3& n) {
 
 // Approximation of reflection-refraction by Christophe Schlick
 float schlick(float cosine, float ref_idx) {
-    float r0 = (1-ref_idx) / (1+ref_idx);
-    r0 = r0*r0;
-    return r0 + (1-r0)*pow((1 - cosine),5);
+	float r0 = (1-ref_idx) / (1+ref_idx);
+	r0 = r0*r0;
+	return r0 + (1-r0)*pow((1 - cosine),5);
+}
+
+hittable *random_scene() {
+	int n = 500;
+	hittable **list = new hittable*[n+1];
+	list[0] =  new sphere(vec3(0,-1000,0), 1000, new lambertian(vec3(0.5, 0.5, 0.5)));
+	int i = 1;
+	for (int a = -11; a < 11; a++) {
+		for (int b = -11; b < 11; b++) {
+			float choose_mat = random_double();
+			vec3 center(a+0.9*random_double(),0.2,b+0.9*random_double());
+			if ((center-vec3(4,0.2,0)).length() > 0.9) {
+				if (choose_mat < 0.8) {  // diffuse
+					list[i++] = new sphere(center, 0.2,
+						new lambertian(vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+						)
+					);
+				}
+				else if (choose_mat < 0.95) { // metal
+					list[i++] = new sphere(center, 0.2,
+							new metal(vec3(0.5*(1 + random_double()),
+										   0.5*(1 + random_double()),
+										   0.5*(1 + random_double())),
+									  0.5*random_double()));
+				}
+				else {  // glass
+					list[i++] = new sphere(center, 0.2, new dielectric(1.5));
+				}
+			}
+		}
+	}
+
+	list[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
+	list[i++] = new sphere(vec3(-4, 1, 0), 1.0, new lambertian(vec3(0.4, 0.2, 0.1)));
+	list[i++] = new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0));
+
+	return new hittable_list(list,i);
 }
 
 
