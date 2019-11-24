@@ -12,6 +12,7 @@
 #include "../include/random.h"
 #include "../include/constant_texture.h"
 #include "../include/checker_texture.h"
+#include "../include/noise_texture.h"
 
 
 using namespace std;
@@ -24,6 +25,7 @@ bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted);
 float schlick(float cosine, float ref_idx);
 hittable *random_scene();
 hittable *two_spheres();
+hittable *two_perlin_spheres();
 
 
 class material {
@@ -181,7 +183,7 @@ int main(int argc, char * argv[]) {
 	hittable *world = new hittable_list(list, 4);
 	*/
 	
-	hittable *world = two_spheres();
+	hittable *world = two_perlin_spheres(); //two_perlin_spheres();
 
 	// For close look
 	/*
@@ -201,14 +203,12 @@ int main(int argc, char * argv[]) {
 	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 	*/
 
-	// For two_spheres
+	// For two_spheres and two_perlin_spheres
 	vec3 lookfrom(13,2,3);
 	vec3 lookat(0,0,0);
 	float dist_to_focus = 10.0;
 	float aperture = 0.0;
 	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-
-
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
@@ -388,12 +388,19 @@ hittable *two_spheres() {
 		new constant_texture(vec3(0.9, 0.9, 0.9))
 	);
 
-	int n = 50;
-	hittable **list = new hittable*[n+1];
+	hittable **list = new hittable*[2];
 	list[0] = new sphere(vec3(0,-10, 0), 10, new lambertian(checker));
 	list[1] = new sphere(vec3(0, 10, 0), 10, new lambertian(checker));
 
-	return new hittable_list(list,2);
+	return new hittable_list(list, 2);
+}
+
+hittable *two_perlin_spheres() {
+	texture *pertext = new noise_texture(4);
+	hittable **list = new hittable*[2];
+	list[0] = new sphere(vec3(0,-1000, 0), 1000, new lambertian(pertext));
+	list[1] = new sphere(vec3(0, 2, 0), 2, new lambertian(pertext));
+	return new hittable_list(list, 2);
 }
 
 
