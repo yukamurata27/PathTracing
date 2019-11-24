@@ -12,47 +12,29 @@ class aabb {
 
 		vec3 min() const { return _min; }
 		vec3 max() const { return _max; }
-
-		/*
-		bool hit(const ray& r, float tmin, float tmax) const {
-			for (int a = 0; a < 3; a++) { // for each axis
-				float t0 = ffmin(
-								(_min[a] - r.origin()[a]) / r.direction()[a],
-								(_max[a] - r.origin()[a]) / r.direction()[a]
-							);
-				float t1 = ffmax(
-								(_min[a] - r.origin()[a]) / r.direction()[a],
-								(_max[a] - r.origin()[a]) / r.direction()[a]
-							);
-				tmin = ffmax(t0, tmin);
-				tmax = ffmin(t1, tmax);
-				if (tmax <= tmin)
-					return false;
-			}
-			return true;
-		}
-		*/
-		inline bool hit(const ray& r, float tmin, float tmax) const {
-			for (int a = 0; a < 3; a++) {
-				float invD = 1.0f / r.direction()[a];
-				float t0 = (min()[a] - r.origin()[a]) * invD; // tx0 = (x0-Ax)/B where x0 is smaller attribute of BB in x-axis (_min)
-				float t1 = (max()[a] - r.origin()[a]) * invD; // tx1 = (x1-Ax)/B where x1 = _max
-		
-				if (invD < 0.0f) std::swap(t0, t1); // when direction is negative
-		
-				// make sure the t0 and t1 are in range (tmin, tmax) for the actual intersect
-				tmin = t0 > tmin ? t0 : tmin;
-				tmax = t1 < tmax ? t1 : tmax;
-
-				if (tmax <= tmin) return false;
-			}
-			return true;
-		}
+		bool hit(const ray& r, float tmin, float tmax) const;
 
 		// bounding box range
 		vec3 _min;
 		vec3 _max;
 };
+
+inline bool aabb::hit(const ray& r, float tmin, float tmax) const {
+	for (int a = 0; a < 3; a++) {
+		float invD = 1.0f / r.direction()[a];
+		float t0 = (min()[a] - r.origin()[a]) * invD; // tx0 = (x0-Ax)/B where x0 is smaller attribute of BB in x-axis (_min)
+		float t1 = (max()[a] - r.origin()[a]) * invD; // tx1 = (x1-Ax)/B where x1 = _max
+		
+		if (invD < 0.0f) std::swap(t0, t1); // when direction is negative
+		
+		// make sure the t0 and t1 are in range (tmin, tmax) for the actual intersect
+		tmin = t0 > tmin ? t0 : tmin;
+		tmax = t1 < tmax ? t1 : tmax;
+
+		if (tmax <= tmin) return false;
+	}
+	return true;
+}
 
 // Compound BBs
 aabb surrounding_box(aabb box0, aabb box1) {
