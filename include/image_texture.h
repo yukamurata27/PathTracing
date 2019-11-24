@@ -14,7 +14,7 @@ class image_texture : public texture {
 };
 
 vec3 image_texture::value(float u, float v, const vec3& p) const {
-	// x, y coordinate in texture image
+	// x, y coordinate in texture image (scaled by u, v)
 	int i = (  u) * nx;
 	int j = (1-v) * ny - 0.001;
 
