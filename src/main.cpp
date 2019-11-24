@@ -118,7 +118,7 @@ class dielectric : public material {
  *
 */
 int main(int argc, char * argv[]) {
-	cout << "Hello World!" << endl;
+	cout << "Rendering begins..." << endl;
 
 	//if ( argc == 1 ) {
 	//	cout << "Expected: ./main obj_file_name" << endl;

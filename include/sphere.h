@@ -18,6 +18,7 @@ class sphere: public hittable {
 		material *mat_ptr;
 };
 
+// Using namespace to point to the "hit" function in the namespace "sphere"
 bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec) const {
 	vec3 co = r.origin() - center;
 	float a = dot(r.direction(), r.direction());
