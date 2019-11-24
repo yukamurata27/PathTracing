@@ -10,8 +10,8 @@ class moving_sphere: public hittable {
 			: center0(cen0), center1(cen1), time0(t0), time1(t1), radius(r), mat_ptr(m)
 			{};
 
-		virtual bool hit(const ray& r, float tmin, float tmax, hit_record& rec) const;
-		//virtual bool bounding_box(float t0, float t1, aabb& box) const;
+		virtual bool hit(const ray& r, float t_min, float t_max, hit_record& rec) const;
+		virtual bool bounding_box(float t0, float t1, aabb& box) const;
 		vec3 center(float time) const;
 
 		vec3 center0, center1;
@@ -21,7 +21,7 @@ class moving_sphere: public hittable {
 };
 
 vec3 moving_sphere::center(float time) const {
-    // Returns the center of sphere at givin time (linear interpolation)
+	// Returns the center of sphere at givin time (linear interpolation)
 	return center0 + ((time - time0) / (time1 - time0))*(center1 - center0);
 }
 
@@ -53,6 +53,23 @@ bool moving_sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec)
 	}
 
 	return false;
+}
+
+bool moving_sphere::bounding_box(float t0, float t1, aabb& box) const {
+    // BB at t0
+	aabb box0(
+        center(t0) - vec3(radius, radius, radius),
+        center(t0) + vec3(radius, radius, radius)
+    );
+    // BB at t1
+	aabb box1(
+        center(t1) - vec3(radius, radius, radius),
+        center(t1) + vec3(radius, radius, radius)
+    );
+
+    // Final BB is a compound of BBs at t=0 and at t=1
+	box = surrounding_box(box0, box1);
+	return true;
 }
 
 #endif
