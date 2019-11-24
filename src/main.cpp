@@ -136,7 +136,7 @@ int main(int argc, char * argv[]) {
 	int ny = 300;
 	int ns = 100;
 
-	outfile.open ("output.ppm");
+	outfile.open ("../img/output.ppm");
 	outfile << "P3\n" << nx << " " << ny << "\n255\n";
 
 	vec3 lower_left_corner(-2.0, -1.0, -1.0);
