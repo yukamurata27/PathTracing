@@ -21,6 +21,7 @@ class moving_sphere: public hittable {
 };
 
 vec3 moving_sphere::center(float time) const {
+    // Returns the center of sphere at givin time (linear interpolation)
 	return center0 + ((time - time0) / (time1 - time0))*(center1 - center0);
 }
 

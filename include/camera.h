@@ -40,6 +40,7 @@ class camera {
 			// randomly get a ray starting point within a camera lens
 			vec3 rd = lens_radius*random_in_unit_disk();
 			vec3 offset = u * rd.x() + v * rd.y();
+			// Get a ray at random time between time0 and time1 while opening shutter
 			float time = time0 + random_double()*(time1-time0);
 
 			// direction vector is
