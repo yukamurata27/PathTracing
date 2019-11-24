@@ -13,10 +13,23 @@
 #include "../include/constant_texture.h"
 #include "../include/checker_texture.h"
 #include "../include/noise_texture.h"
+#include "../include/image_texture.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "../libs/stb/stb_image.h"
 
 
 using namespace std;
 
+
+/* Global variables */
+bool texture_map;
+enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s };
+
+
+/* Function prototypes */
+hittable *get_world(scene s);
+camera set_camera(scene s, int nx, int ny);
 vec3 color(const ray& r, hittable *world, int depth);
 bool hit_sphere(const vec3& center, float radius, const ray& r);
 vec3 random_in_unit_sphere();
@@ -24,10 +37,13 @@ vec3 reflect(const vec3& v, const vec3& n);
 bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted);
 float schlick(float cosine, float ref_idx);
 hittable *random_scene();
+hittable *moving_spheres_zoomin();
 hittable *two_spheres();
 hittable *two_perlin_spheres();
+hittable *image_textured_spheres();
 
 
+/* Class definitions */
 class material {
 	public:
 		virtual bool scatter(
@@ -44,7 +60,10 @@ class lambertian : public material {
 		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const {
 			vec3 target = rec.p + rec.normal + random_in_unit_sphere();
 			scattered = ray(rec.p, target-rec.p, r_in.time());
-			attenuation = albedo->value(0, 0, rec.p);
+			//attenuation = albedo->value(0, 0, rec.p);
+			if (texture_map) attenuation = albedo->value(rec.u, rec.v, rec.p);
+			else attenuation = albedo->value(0, 0, rec.p);
+
 			return true;
 		}
 
@@ -132,83 +151,24 @@ int main(int argc, char * argv[]) {
 	//}
 
 	ofstream outfile;
-	//int nx = 200;
-	//int ny = 100;
-	int nx = 500;
-	int ny = 300;
+	int nx = 500; //200;
+	int ny = 300; //100;
 	int ns = 100;
 
-	outfile.open ("../img/output.ppm");
+	outfile.open ("../rendered_img/output.ppm");
 	outfile << "P3\n" << nx << " " << ny << "\n255\n";
 
 	vec3 lower_left_corner(-2.0, -1.0, -1.0);
 	vec3 horizontal(4.0, 0.0, 0.0); // step interval
 	vec3 vertical(0.0, 2.0, 0.0);   // step interval
 	vec3 origin(0.0, 0.0, 0.0);
-
-	/*
-	hittable *list[5];
-	list[0] = new sphere(vec3(0,0,-1), 0.5, new lambertian(vec3(0.1, 0.2, 0.5)));
-	list[1] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
-	list[2] = new sphere(vec3(1,0,-1), 0.5, new metal(vec3(0.8, 0.6, 0.2), 0.3));
-	list[3] = new sphere(vec3(-1,0,-1), 0.5, new dielectric(1.5));
-	list[4] = new sphere(vec3(-1,0,-1), -0.45, new dielectric(1.5));
-	hittable *world = new hittable_list(list, 5);
-	*/
-
-	/*
-	hittable *list[4];
-	list[0] = new moving_sphere(vec3(0,0,-1), vec3(0,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(new constant_texture(
-											vec3(random_double()*random_double(),
-											random_double()*random_double(),
-											random_double()*random_double())
-										))
-					);
-	list[1] = new moving_sphere(vec3(1,0,-1), vec3(1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(new constant_texture(
-											vec3(random_double()*random_double(),
-											random_double()*random_double(),
-											random_double()*random_double())
-										))
-					);
-	list[2] = new moving_sphere(vec3(-1,0,-1), vec3(-1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
-									new lambertian(new constant_texture(
-											vec3(random_double()*random_double(),
-											random_double()*random_double(),
-											random_double()*random_double())
-										))
-					);
-	list[3] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(new constant_texture(vec3(0.5, 0.5, 0.5))));
-	hittable *world = new hittable_list(list, 4);
-	*/
 	
-	hittable *world = two_perlin_spheres(); //two_perlin_spheres();
+	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s }
+	scene s = image_texture_s;
+	texture_map = s == image_texture_s ? true : false;
 
-	// For close look
-	/*
-	vec3 lookfrom(3,3,2);
-	vec3 lookat(0,0,-1);
-	float dist_to_focus = (lookfrom-lookat).length();
-	float aperture = 0.0;
-	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-	*/
-
-	// For random_scene
-	/*
-	vec3 lookfrom(13,2,3);
-	vec3 lookat(0,0,0);
-	float dist_to_focus = 10.0;
-	float aperture = 0.0;
-	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-	*/
-
-	// For two_spheres and two_perlin_spheres
-	vec3 lookfrom(13,2,3);
-	vec3 lookat(0,0,0);
-	float dist_to_focus = 10.0;
-	float aperture = 0.0;
-	camera cam(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+	hittable *world = get_world(s);
+	camera cam = set_camera(s, nx, ny);
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
@@ -240,6 +200,73 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
+hittable *get_world(scene s) {
+	switch(s)
+	{
+		case random_s:
+			return random_scene();
+		case moving_spheres_zoomin_s:
+			return moving_spheres_zoomin();
+		case two_spheres_s:
+			return two_spheres();
+		case two_perlin_spheres_s:
+			return two_perlin_spheres();
+		case image_texture_s:
+			return image_textured_spheres();
+	}
+	
+	// Default scene
+	return two_spheres();
+}
+
+camera set_camera(scene s, int nx, int ny) {
+	vec3 lookfrom;
+	vec3 lookat;
+	float dist_to_focus;
+	float aperture;
+
+	switch(s)
+	{
+		case random_s:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case moving_spheres_zoomin_s:
+			lookfrom = vec3(3,3,2);
+			lookat = vec3(0,0,-1);
+			dist_to_focus = (lookfrom-lookat).length();
+			aperture = 0.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case two_spheres_s:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case two_perlin_spheres_s:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case image_texture_s:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+	}
+	
+	// Default camera
+	lookfrom = vec3(13,2,3);
+	lookat = vec3(0,0,0);
+	dist_to_focus = 10.0;
+	aperture = 0.0;
+	return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+}
+
 vec3 color(const ray& r, hittable *world, int depth) {
 	hit_record rec;
 	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
@@ -247,7 +274,8 @@ vec3 color(const ray& r, hittable *world, int depth) {
 		vec3 attenuation;
 		
 		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered))
-			return attenuation*color(scattered, world, depth+1);
+			if (texture_map) return attenuation;
+			else return attenuation*color(scattered, world, depth+1);
 		else
 			return vec3(0,0,0);			
 	} else {
@@ -382,6 +410,33 @@ hittable *random_scene() {
 	return new hittable_list(list,i);
 }
 
+hittable *moving_spheres_zoomin() {
+	hittable **list = new hittable*[4];
+	list[0] = new moving_sphere(vec3(0,0,-1), vec3(0,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(new constant_texture(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										))
+					);
+	list[1] = new moving_sphere(vec3(1,0,-1), vec3(1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(new constant_texture(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										))
+					);
+	list[2] = new moving_sphere(vec3(-1,0,-1), vec3(-1,0,-1)+vec3(0, 0.5*random_double(), 0), 0.0, 1.0, 0.2,
+									new lambertian(new constant_texture(
+											vec3(random_double()*random_double(),
+											random_double()*random_double(),
+											random_double()*random_double())
+										))
+					);
+	list[3] = new sphere(vec3(0,-100.5,-1), 100, new lambertian(new constant_texture(vec3(0.5, 0.5, 0.5))));
+	return new hittable_list(list, 4);
+}
+
 hittable *two_spheres() {
 	texture *checker = new checker_texture(
 		new constant_texture(vec3(0.2, 0.3, 0.1)),
@@ -400,6 +455,18 @@ hittable *two_perlin_spheres() {
 	hittable **list = new hittable*[2];
 	list[0] = new sphere(vec3(0,-1000, 0), 1000, new lambertian(pertext));
 	list[1] = new sphere(vec3(0, 2, 0), 2, new lambertian(pertext));
+	return new hittable_list(list, 2);
+}
+
+hittable *image_textured_spheres() {
+	int nx, ny, nn;
+	unsigned char *tex_data = stbi_load("../texture_img/earthmap.jpg", &nx, &ny, &nn, 0);
+	material *mat = new lambertian(new image_texture(tex_data, nx, ny));
+
+	texture *pertext = new noise_texture(4);
+	hittable **list = new hittable*[2];
+	list[0] = new sphere(vec3(0,-1000, 0), 1000, new lambertian(pertext));
+	list[1] = new sphere(vec3(0, 2, 0), 2, mat);
 	return new hittable_list(list, 2);
 }
 

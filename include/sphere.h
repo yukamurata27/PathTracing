@@ -3,6 +3,8 @@
 
 #include "hittable.h"
 
+void get_sphere_uv(const vec3& p, float& u, float& v);
+
 class sphere: public hittable {
 	public:
 		sphere() {}
@@ -35,6 +37,7 @@ bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec) const 
 			rec.p = r.point_at_parameter(rec.t);
 			rec.normal = (rec.p - center) / radius; // normalized
 			rec.mat_ptr = mat_ptr;
+			get_sphere_uv((rec.p-center)/radius, rec.u, rec.v);
 			return true;
 		}
 
@@ -45,6 +48,7 @@ bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec) const 
 			rec.p = r.point_at_parameter(rec.t);
 			rec.normal = (rec.p - center) / radius; // normalized
 			rec.mat_ptr = mat_ptr;
+			get_sphere_uv((rec.p-center)/radius, rec.u, rec.v);
 			return true;
 		}
 	}
@@ -58,6 +62,13 @@ bool sphere::bounding_box(float t0, float t1, aabb& box) const {
 			center + vec3(radius, radius, radius)
 		  );
 	return true;
+}
+
+void get_sphere_uv(const vec3& p, float& u, float& v) {
+	float phi = atan2(p.z(), p.x());
+	float theta = asin(p.y());
+	u = 1-(phi + M_PI) / (2*M_PI);
+	v = (theta + M_PI/2) / M_PI;
 }
 
 #endif
