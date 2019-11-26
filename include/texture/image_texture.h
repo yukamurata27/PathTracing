@@ -1,6 +1,8 @@
 #ifndef IMAGETEXTUREH
 #define IMAGETEXTUREH
 
+#include "texture.h"
+
 class image_texture : public texture {
 	public:
 		image_texture() {}

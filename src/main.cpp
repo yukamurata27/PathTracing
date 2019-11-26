@@ -5,20 +5,23 @@
 /* Other headers */
 // Include a header once once within a project!
 #include "float.h"
-#include "../include/hittable_list.h"
-#include "../include/sphere.h"
-#include "../include/moving_sphere.h"
-#include "../include/xy_rect.h"
-#include "../include/yz_rect.h"
-#include "../include/xz_rect.h"
-#include "../include/flip_normals.h"
+
+#include "../include/hittable/hittable_list.h"
+#include "../include/hittable/sphere.h"
+#include "../include/hittable/moving_sphere.h"
+#include "../include/hittable/xy_rect.h"
+#include "../include/hittable/yz_rect.h"
+#include "../include/hittable/xz_rect.h"
+#include "../include/hittable/flip_normals.h"
+#include "../include/hittable/box.h"
 
 #include "../include/camera.h"
 #include "../include/random.h"
-#include "../include/constant_texture.h"
-#include "../include/checker_texture.h"
-#include "../include/noise_texture.h"
-#include "../include/image_texture.h"
+
+#include "../include/texture/constant_texture.h"
+#include "../include/texture/checker_texture.h"
+#include "../include/texture/noise_texture.h"
+#include "../include/texture/image_texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../libs/stb/stb_image.h"
@@ -170,7 +173,7 @@ int main(int argc, char * argv[]) {
 	//}
 
 	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s }
-	scene s = cornell_box_s;
+	scene s = image_texture_s;
 	texture_map = s == image_texture_s ? true : false;
 
 	int nx, ny;
@@ -521,7 +524,7 @@ hittable *simple_light() {
 }
 
 hittable *cornell_box() {
-	hittable **list = new hittable*[6];
+	hittable **list = new hittable*[8];
 	int i = 0;
 	material *red = new lambertian(new constant_texture(vec3(0.65, 0.05, 0.05)));
 	material *white = new lambertian(new constant_texture(vec3(0.73, 0.73, 0.73)));
@@ -534,6 +537,10 @@ hittable *cornell_box() {
 	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
 	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
 	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+
+	// Two boxes in the room
+	list[i++] = new box(vec3(130, 0, 65), vec3(295, 165, 230), white);
+	list[i++] = new box(vec3(265, 0, 295), vec3(430, 330, 460), white);
 
 	return new hittable_list(list,i);
 }
