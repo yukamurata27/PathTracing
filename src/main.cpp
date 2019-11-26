@@ -8,6 +8,11 @@
 #include "../include/hittable_list.h"
 #include "../include/sphere.h"
 #include "../include/moving_sphere.h"
+#include "../include/xy_rect.h"
+#include "../include/yz_rect.h"
+#include "../include/xz_rect.h"
+#include "../include/flip_normals.h"
+
 #include "../include/camera.h"
 #include "../include/random.h"
 #include "../include/constant_texture.h"
@@ -24,7 +29,7 @@ using namespace std;
 
 /* Global variables */
 bool texture_map;
-enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s };
+enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s, cornell_box_s };
 
 
 /* Function prototypes */
@@ -41,16 +46,17 @@ hittable *moving_spheres_zoomin();
 hittable *two_spheres();
 hittable *two_perlin_spheres();
 hittable *image_textured_spheres();
+hittable *simple_light();
+hittable *cornell_box();
 
 
 /* Class definitions */
 class material {
 	public:
-		virtual bool scatter(
-			const ray& r_in,
-			const hit_record& rec,
-			vec3& attenuation,
-			ray& scattered) const = 0;
+		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const = 0;
+		virtual vec3 emitted(float u, float v, const vec3& p) const {
+			return vec3(0,0,0);
+		}
 };
 
 class lambertian : public material {
@@ -133,6 +139,19 @@ class dielectric : public material {
 		float ref_idx;
 };
 
+class diffuse_light : public material {
+	public:
+		diffuse_light(texture *a) : emit(a) {}
+
+		virtual bool scatter(const ray& r_in, const hit_record& rec,
+			vec3& attenuation, ray& scattered) const { return false; }
+		virtual vec3 emitted(float u, float v, const vec3& p) const {
+			return emit->value(u, v, p);
+		}
+
+		texture *emit;
+};
+
 
 /*
  * main
@@ -150,11 +169,21 @@ int main(int argc, char * argv[]) {
 	//	return 0;
 	//}
 
-	ofstream outfile;
-	int nx = 500; //200;
-	int ny = 300; //100;
+	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s }
+	scene s = cornell_box_s;
+	texture_map = s == image_texture_s ? true : false;
+
+	int nx, ny;
+	if (s == cornell_box_s) {
+		nx = 300;
+		ny = 300;
+	} else {
+		nx = 500; //200;
+		ny = 300; //100;
+	}
 	int ns = 100;
 
+	ofstream outfile;
 	outfile.open ("../rendered_img/output.ppm");
 	outfile << "P3\n" << nx << " " << ny << "\n255\n";
 
@@ -162,10 +191,6 @@ int main(int argc, char * argv[]) {
 	vec3 horizontal(4.0, 0.0, 0.0); // step interval
 	vec3 vertical(0.0, 2.0, 0.0);   // step interval
 	vec3 origin(0.0, 0.0, 0.0);
-	
-	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s }
-	scene s = image_texture_s;
-	texture_map = s == image_texture_s ? true : false;
 
 	hittable *world = get_world(s);
 	camera cam = set_camera(s, nx, ny);
@@ -213,6 +238,10 @@ hittable *get_world(scene s) {
 			return two_perlin_spheres();
 		case image_texture_s:
 			return image_textured_spheres();
+		case simple_light_s:
+			return simple_light();
+		case cornell_box_s:
+			return cornell_box();
 	}
 	
 	// Default scene
@@ -220,10 +249,8 @@ hittable *get_world(scene s) {
 }
 
 camera set_camera(scene s, int nx, int ny) {
-	vec3 lookfrom;
-	vec3 lookat;
-	float dist_to_focus;
-	float aperture;
+	vec3 lookfrom, lookat;
+	float dist_to_focus, aperture, vfov;
 
 	switch(s)
 	{
@@ -232,31 +259,50 @@ camera set_camera(scene s, int nx, int ny) {
 			lookat = vec3(0,0,0);
 			dist_to_focus = 10.0;
 			aperture = 0.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 		case moving_spheres_zoomin_s:
 			lookfrom = vec3(3,3,2);
 			lookat = vec3(0,0,-1);
 			dist_to_focus = (lookfrom-lookat).length();
 			aperture = 0.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 		case two_spheres_s:
 			lookfrom = vec3(13,2,3);
 			lookat = vec3(0,0,0);
 			dist_to_focus = 10.0;
 			aperture = 0.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 		case two_perlin_spheres_s:
 			lookfrom = vec3(13,2,3);
 			lookat = vec3(0,0,0);
 			dist_to_focus = 10.0;
 			aperture = 0.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 		case image_texture_s:
 			lookfrom = vec3(13,2,3);
 			lookat = vec3(0,0,0);
 			dist_to_focus = 10.0;
 			aperture = 0.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case simple_light_s:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		case cornell_box_s:
+			lookfrom = vec3(278, 278, -800);
+			lookat = vec3(278,278,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			vfov = 40.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 	}
 	
 	// Default camera
@@ -272,22 +318,16 @@ vec3 color(const ray& r, hittable *world, int depth) {
 	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
 		ray scattered;
 		vec3 attenuation;
+		vec3 emitted = rec.mat_ptr->emitted(rec.u, rec.v, rec.p); // Light emission
 		
+		// Simply add emission from the material to all
 		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered))
 			if (texture_map) return attenuation;
-			else return attenuation*color(scattered, world, depth+1);
+			else return emitted + attenuation*color(scattered, world, depth+1);
 		else
-			return vec3(0,0,0);			
+			return emitted;		
 	} else {
-		// Sky color is a linear interpolation b/w while & blue
-
-		vec3 unit_direction = unit_vector(r.direction());
-
-		// t is a mapped y from [-1, 1] to [0, 1]
-		// more accurately, t = 0.5 * (sqrt(2)*unit_direction.y() + 1.0)
-		float t = 0.5 * (unit_direction.y() + 1.0);
-
-		return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+		return vec3(0,0,0);
 	}
 }
 
@@ -468,6 +508,34 @@ hittable *image_textured_spheres() {
 	list[0] = new sphere(vec3(0,-1000, 0), 1000, new lambertian(pertext));
 	list[1] = new sphere(vec3(0, 2, 0), 2, mat);
 	return new hittable_list(list, 2);
+}
+
+hittable *simple_light() {
+	texture *pertext = new noise_texture(4);
+	hittable **list = new hittable*[4];
+	list[0] = new sphere(vec3(0,-1000, 0), 1000, new lambertian(pertext));
+	list[1] = new sphere(vec3(0, 2, 0), 2, new lambertian(pertext));
+	list[2] = new sphere(vec3(0, 7, 0), 2, new diffuse_light(new constant_texture(vec3(4,4,4))));
+    list[3] = new xy_rect(3, 5, 1, 3, -2, new diffuse_light(new constant_texture(vec3(4,4,4))));
+	return new hittable_list(list,4);
+}
+
+hittable *cornell_box() {
+	hittable **list = new hittable*[6];
+	int i = 0;
+	material *red = new lambertian(new constant_texture(vec3(0.65, 0.05, 0.05)));
+	material *white = new lambertian(new constant_texture(vec3(0.73, 0.73, 0.73)));
+	material *green = new lambertian(new constant_texture(vec3(0.12, 0.45, 0.15)));
+	material *light = new diffuse_light(new constant_texture(vec3(15, 15, 15)));
+
+	list[i++] = new flip_normals(new yz_rect(0, 555, 0, 555, 555, green));
+	list[i++] = new yz_rect(0, 555, 0, 555, 0, red);
+	list[i++] = new xz_rect(213, 343, 227, 332, 554, light);
+	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
+	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
+	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+
+	return new hittable_list(list,i);
 }
 
 
