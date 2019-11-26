@@ -14,6 +14,8 @@
 #include "../include/hittable/xz_rect.h"
 #include "../include/hittable/flip_normals.h"
 #include "../include/hittable/box.h"
+#include "../include/hittable/translate.h"
+#include "../include/hittable/rotate_y.h"
 
 #include "../include/camera.h"
 #include "../include/random.h"
@@ -173,7 +175,7 @@ int main(int argc, char * argv[]) {
 	//}
 
 	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s }
-	scene s = image_texture_s;
+	scene s = cornell_box_s;
 	texture_map = s == image_texture_s ? true : false;
 
 	int nx, ny;
@@ -539,8 +541,12 @@ hittable *cornell_box() {
 	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
 
 	// Two boxes in the room
-	list[i++] = new box(vec3(130, 0, 65), vec3(295, 165, 230), white);
-	list[i++] = new box(vec3(265, 0, 295), vec3(430, 330, 460), white);
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
+					vec3(130,0,65));
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(165,330,165), white), 15),
+					vec3(265,0,295));
 
 	return new hittable_list(list,i);
 }
