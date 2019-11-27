@@ -16,6 +16,14 @@
 #include "../include/hittable/box.h"
 #include "../include/hittable/translate.h"
 #include "../include/hittable/rotate_y.h"
+#include "../include/hittable/constant_medium.h"
+#include "../include/hittable/bvh_node.h"
+
+#include "../include/material/diffuse_light.h"
+#include "../include/material/dielectric.h"
+#include "../include/material/isotropic.h"
+#include "../include/material/lambertian.h"
+#include "../include/material/metal.h"
 
 #include "../include/camera.h"
 #include "../include/random.h"
@@ -34,18 +42,15 @@ using namespace std;
 
 /* Global variables */
 bool texture_map;
-enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s, cornell_box_s };
+bool use_ambient;
+enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s, cornell_box_s, cornell_smoke_s, final_s };
 
 
 /* Function prototypes */
 hittable *get_world(scene s);
 camera set_camera(scene s, int nx, int ny);
 vec3 color(const ray& r, hittable *world, int depth);
-bool hit_sphere(const vec3& center, float radius, const ray& r);
-vec3 random_in_unit_sphere();
-vec3 reflect(const vec3& v, const vec3& n);
-bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted);
-float schlick(float cosine, float ref_idx);
+
 hittable *random_scene();
 hittable *moving_spheres_zoomin();
 hittable *two_spheres();
@@ -53,109 +58,8 @@ hittable *two_perlin_spheres();
 hittable *image_textured_spheres();
 hittable *simple_light();
 hittable *cornell_box();
-
-
-/* Class definitions */
-class material {
-	public:
-		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const = 0;
-		virtual vec3 emitted(float u, float v, const vec3& p) const {
-			return vec3(0,0,0);
-		}
-};
-
-class lambertian : public material {
-	public:
-		lambertian(texture *a) : albedo(a) {}
-
-		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const {
-			vec3 target = rec.p + rec.normal + random_in_unit_sphere();
-			scattered = ray(rec.p, target-rec.p, r_in.time());
-			//attenuation = albedo->value(0, 0, rec.p);
-			if (texture_map) attenuation = albedo->value(rec.u, rec.v, rec.p);
-			else attenuation = albedo->value(0, 0, rec.p);
-
-			return true;
-		}
-
-		texture *albedo;
-};
-
-class metal : public material {
-	public:
-		metal(const vec3& a, float f) : albedo(a) {
-			if (f < 1) fuzz = f; else fuzz = 1;
-		}
-
-		virtual bool scatter(const ray& r_in, const hit_record& rec,
-							 vec3& attenuation, ray& scattered) const {
-			vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-			scattered = ray(rec.p, reflected);
-			attenuation = albedo;
-			return (dot(scattered.direction(), rec.normal) > 0);
-		}
-
-		vec3 albedo;
-		float fuzz;
-};
-
-class dielectric : public material {
-	public:
-		dielectric(float ri) : ref_idx(ri) {}
-		virtual bool scatter(const ray& r_in, const hit_record& rec,
-							 vec3& attenuation, ray& scattered) const {
-
-			vec3 outward_normal;
-			vec3 reflected = reflect(r_in.direction(), rec.normal);
-			float ni_over_nt;
-			attenuation = vec3(1.0, 1.0, 1.0); // No color absorbs
-			vec3 refracted;
-
-			float reflect_prob;
-			float schlick_cosine;
-
-			if (dot(r_in.direction(), rec.normal) > 0) { // from inside to outside
-				outward_normal = -rec.normal;
-				ni_over_nt = ref_idx;
-				schlick_cosine = ref_idx * dot(r_in.direction(), rec.normal) / r_in.direction().length();
-			} else { // from outside to inside
-				outward_normal = rec.normal;
-				ni_over_nt = 1.0 / ref_idx; // ref_idx of air is close to 1.0
-				schlick_cosine = -dot(r_in.direction(), rec.normal) / r_in.direction().length();
-			}
-
-			if (refract(r_in.direction(), outward_normal, ni_over_nt, refracted)) {
-				// Randomize refraction and reflection nicely
-				reflect_prob = schlick(schlick_cosine, ref_idx);
-			}
-			else reflect_prob = 1.0;
-
-			// Based on the probability, return refracted or reflected ray
-			if (random_double() < reflect_prob) {
-			   scattered = ray(rec.p, reflected);
-			}
-			else {
-			   scattered = ray(rec.p, refracted);
-			}
-
-			return true;
-		}
-
-		float ref_idx;
-};
-
-class diffuse_light : public material {
-	public:
-		diffuse_light(texture *a) : emit(a) {}
-
-		virtual bool scatter(const ray& r_in, const hit_record& rec,
-			vec3& attenuation, ray& scattered) const { return false; }
-		virtual vec3 emitted(float u, float v, const vec3& p) const {
-			return emit->value(u, v, p);
-		}
-
-		texture *emit;
-};
+hittable *cornell_smoke();
+hittable *final();
 
 
 /*
@@ -174,12 +78,17 @@ int main(int argc, char * argv[]) {
 	//	return 0;
 	//}
 
-	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s }
+	// Choose from { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s, cornell_box_s, cornell_smoke_s, final_s }
 	scene s = cornell_box_s;
-	texture_map = s == image_texture_s ? true : false;
+
+	if (s == image_texture_s || s == final_s) texture_map = true;
+	else texture_map = false;
+
+	if (s == simple_light_s || s == cornell_box_s || s == cornell_smoke_s || s == final_s) use_ambient = false;
+	else use_ambient = true;
 
 	int nx, ny;
-	if (s == cornell_box_s) {
+	if (s == cornell_box_s || s == cornell_smoke_s || s == final_s) {
 		nx = 300;
 		ny = 300;
 	} else {
@@ -216,9 +125,13 @@ int main(int argc, char * argv[]) {
 			// gamma correction (brighter color)
 			col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
 
-			int ir = int(255.99	* col[0]);
-			int ig = int(255.99	* col[1]);
-			int ib = int(255.99	* col[2]);
+			// Clamp color to [0, 1]
+			for (int channel = 0; channel < 3; channel++)
+				if (col[channel] > 1.0) col[channel] = 1.0;
+
+			int ir = int(255.99 * col[0]);
+			int ig = int(255.99 * col[1]);
+			int ib = int(255.99 * col[2]);
 
 			outfile << ir << " " << ig << " " << ib << "\n";
 		}
@@ -247,10 +160,13 @@ hittable *get_world(scene s) {
 			return simple_light();
 		case cornell_box_s:
 			return cornell_box();
+		case cornell_smoke_s:
+			return cornell_smoke();
+		case final_s:
+			return final();
+		default:
+			return two_spheres();
 	}
-	
-	// Default scene
-	return two_spheres();
 }
 
 camera set_camera(scene s, int nx, int ny) {
@@ -260,6 +176,10 @@ camera set_camera(scene s, int nx, int ny) {
 	switch(s)
 	{
 		case random_s:
+		case two_spheres_s:
+		case two_perlin_spheres_s:
+		case image_texture_s:
+		case simple_light_s:
 			lookfrom = vec3(13,2,3);
 			lookat = vec3(0,0,0);
 			dist_to_focus = 10.0;
@@ -273,49 +193,23 @@ camera set_camera(scene s, int nx, int ny) {
 			aperture = 0.0;
 			vfov = 20.0;
 			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-		case two_spheres_s:
-			lookfrom = vec3(13,2,3);
-			lookat = vec3(0,0,0);
-			dist_to_focus = 10.0;
-			aperture = 0.0;
-			vfov = 20.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-		case two_perlin_spheres_s:
-			lookfrom = vec3(13,2,3);
-			lookat = vec3(0,0,0);
-			dist_to_focus = 10.0;
-			aperture = 0.0;
-			vfov = 20.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-		case image_texture_s:
-			lookfrom = vec3(13,2,3);
-			lookat = vec3(0,0,0);
-			dist_to_focus = 10.0;
-			aperture = 0.0;
-			vfov = 20.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-		case simple_light_s:
-			lookfrom = vec3(13,2,3);
-			lookat = vec3(0,0,0);
-			dist_to_focus = 10.0;
-			aperture = 0.0;
-			vfov = 20.0;
-			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 		case cornell_box_s:
+		case cornell_smoke_s:
+		case final_s:
 			lookfrom = vec3(278, 278, -800);
 			lookat = vec3(278,278,0);
 			dist_to_focus = 10.0;
 			aperture = 0.0;
 			vfov = 40.0;
 			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+		default:
+			lookfrom = vec3(13,2,3);
+			lookat = vec3(0,0,0);
+			dist_to_focus = 10.0;
+			aperture = 0.0;
+			vfov = 20.0;
+			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 	}
-	
-	// Default camera
-	lookfrom = vec3(13,2,3);
-	lookat = vec3(0,0,0);
-	dist_to_focus = 10.0;
-	aperture = 0.0;
-	return camera(lookfrom, lookat, vec3(0,1,0), 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
 }
 
 vec3 color(const ray& r, hittable *world, int depth) {
@@ -327,78 +221,23 @@ vec3 color(const ray& r, hittable *world, int depth) {
 		
 		// Simply add emission from the material to all
 		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered))
-			if (texture_map) return attenuation;
-			else return emitted + attenuation*color(scattered, world, depth+1);
+			//if (texture_map) return emitted + attenuation;
+			//else return emitted + attenuation*color(scattered, world, depth+1);
+			return emitted + attenuation*color(scattered, world, depth+1);
 		else
 			return emitted;		
 	} else {
-		return vec3(0,0,0);
+		if (use_ambient) {
+			// Sky color is a linear interpolation b/w while & blue
+			vec3 unit_direction = unit_vector(r.direction());
+
+			// t is a mapped y from [-1, 1] to [0, 1]
+			// more accurately, t = 0.5 * (sqrt(2)*unit_direction.y() + 1.0)
+			float t = 0.5 * (unit_direction.y() + 1.0);
+
+			return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+		} else return vec3(0,0,0);
 	}
-}
-
-bool hit_sphere(const vec3& center, float radius, const ray& r) {
-	// Solve t^2 dot(B,B) + 2t dot(B,A-C) + dot(A-C, A-C)-R^2 = 0
-	vec3 co = r.origin() - center; // A-C
-	float a = dot(r.direction(), r.direction());
-	float b = 2.0 * dot(r.direction(), co);
-	float c = dot(co, co) - radius*radius;
-
-	float discriminant = b*b - 4*a*c;
-	return (discriminant > 0);
-}
-
-vec3 random_in_unit_sphere() {
-	vec3 p;
-
-	// Keep getting a random point on a unit sphere until we get one
-	do {
-		// map from [0, 1) to [-1, 1) where -vec3(1,1,1) is offset
-		p = 2.0*vec3(random_double(), random_double(), random_double()) - vec3(1,1,1);
-	} while (p.squared_length() >= 1.0);
-
-	return p;
-}
-
-bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted) {
-	// x component of unit(v):
-	// 		dot(unit(n), N)^2 + x^2 = 1^2
-	//		x^2 = 1 - dot(unit(n), N)^2
-	//		x = sqrt( 1 - dot(unit(n), N)^2 )
-	//		=> sin(theta) = sqrt( 1 - dot(unit(n), N)^2 )
-	//
-	// Snell's law: ni*sin(theta) = nt*sin(theta')
-	//		sin(theta') = ni/nt * sqrt( 1 - dot(unit(n), N)^2 )
-	//		x' = ni/nt * sqrt( 1 - dot(unit(n),N)^2 )
-	//
-	// y' component of refracted unit vector
-	//		x'^2 + y'^2 = 1
-	//		y'^2 = 1 - x'^2
-	//		y' = sqrt( 1 - x'^2 )
-	//		=> discriminant is inside of this sqrt: 1 - x'^2
-	vec3 uv = unit_vector(v);
-	float dt = dot(uv, n);
-	float discriminant = 1.0 - ni_over_nt*ni_over_nt*(1-dt*dt);
-	if (discriminant > 0) {
-		// isn't it below?
-		// refracted = ni_over_nt*sqrt(1-dt*dt) - n*sqrt(discriminant);
-		refracted = ni_over_nt*(uv - n*dt) - n*sqrt(discriminant);
-		return true;
-	}
-	else return false;
-}
-
-vec3 reflect(const vec3& v, const vec3& n) {
-	// R+L = 2*dot(L, N)*N
-	// R = -L + 2*dot(L, N)*N where V = -L
-	// R = V - 2*dot(V, N)*N
-	return v - 2*dot(v,n)*n;
-}
-
-// Approximation of reflection-refraction by Christophe Schlick
-float schlick(float cosine, float ref_idx) {
-	float r0 = (1-ref_idx) / (1+ref_idx);
-	r0 = r0*r0;
-	return r0 + (1-r0)*pow((1 - cosine),5);
 }
 
 hittable *random_scene() {
@@ -506,7 +345,7 @@ hittable *two_perlin_spheres() {
 hittable *image_textured_spheres() {
 	int nx, ny, nn;
 	unsigned char *tex_data = stbi_load("../texture_img/earthmap.jpg", &nx, &ny, &nn, 0);
-	material *mat = new lambertian(new image_texture(tex_data, nx, ny));
+	material *mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
 
 	texture *pertext = new noise_texture(4);
 	hittable **list = new hittable*[2];
@@ -549,6 +388,85 @@ hittable *cornell_box() {
 					vec3(265,0,295));
 
 	return new hittable_list(list,i);
+}
+
+hittable *cornell_smoke() {
+	hittable **list = new hittable*[8];
+	int i = 0;
+	material *red = new lambertian(new constant_texture(vec3(0.65, 0.05, 0.05)));
+	material *white = new lambertian(new constant_texture(vec3(0.73, 0.73, 0.73)));
+	material *green = new lambertian(new constant_texture(vec3(0.12, 0.45, 0.15)));
+	material *light = new diffuse_light(new constant_texture(vec3(7, 7, 7)));
+
+	list[i++] = new flip_normals(new yz_rect(0, 555, 0, 555, 555, green));
+	list[i++] = new yz_rect(0, 555, 0, 555, 0, red);
+	list[i++] = new xz_rect(113, 443, 127, 432, 554, light);
+	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
+	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
+	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+
+	hittable *b1 = new translate(
+						new rotate_y(new box(vec3(0, 0, 0), vec3(165, 165, 165), white), -18),
+						vec3(130,0,65));
+	hittable *b2 = new translate(
+						new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15),
+						vec3(265,0,295));
+
+	list[i++] = new constant_medium(b1, 0.01, new constant_texture(vec3(1.0, 1.0, 1.0)));
+    list[i++] = new constant_medium(b2, 0.01, new constant_texture(vec3(0.0, 0.0, 0.0)));
+
+	return new hittable_list(list,i);
+}
+
+hittable *final() {
+	int nb = 20;
+	hittable **list = new hittable*[30];
+	hittable **boxlist = new hittable*[10000];
+	hittable **boxlist2 = new hittable*[10000];
+	material *white = new lambertian( new constant_texture(vec3(0.73, 0.73, 0.73)));
+	material *ground = new lambertian( new constant_texture(vec3(0.48, 0.83, 0.53)));
+
+	int b = 0;
+	for (int i = 0; i < nb; i++) {
+		for (int j = 0; j < nb; j++) {
+			float w = 100;
+			float x0 = -1000 + i*w;
+			float z0 = -1000 + j*w;
+			float y0 = 0;
+			float x1 = x0 + w;
+			float y1 = 100*(random_double()+0.01);
+			float z1 = z0 + w;
+			boxlist[b++] = new box(vec3(x0,y0,z0), vec3(x1,y1,z1), ground);
+		}
+	}
+	int l = 0;
+	list[l++] = new bvh_node(boxlist, b, 0, 1);
+	material *light = new diffuse_light( new constant_texture(vec3(7, 7, 7)));
+	list[l++] = new xz_rect(123, 423, 147, 412, 554, light);
+	vec3 center(400, 400, 200);
+	list[l++] = new moving_sphere(center, center+vec3(30, 0, 0),
+								0, 1, 50, new lambertian(new constant_texture(vec3(0.7, 0.3, 0.1))));
+	list[l++] = new sphere(vec3(260, 150, 45), 50, new dielectric(1.5));
+	list[l++] = new sphere(vec3(0, 150, 145), 50, new metal(vec3(0.8, 0.8, 0.9), 10.0));
+	hittable *boundary = new sphere(vec3(360, 150, 145), 70, new dielectric(1.5));
+	list[l++] = boundary;
+	list[l++] = new constant_medium(boundary, 0.2, new constant_texture(vec3(0.2, 0.4, 0.9)));
+	boundary = new sphere(vec3(0, 0, 0), 5000, new dielectric(1.5));
+	list[l++] = new constant_medium(boundary, 0.0001, new constant_texture(vec3(1.0, 1.0, 1.0)));
+	int nx, ny, nn;
+	unsigned char *tex_data = stbi_load("../texture_img/earthmap.jpg", &nx, &ny, &nn, 0);
+	material *emat =  new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[l++] = new sphere(vec3(400, 200, 400), 100, emat);
+	texture *pertext = new noise_texture(0.1);
+	list[l++] =  new sphere(vec3(220, 280, 300), 80, new lambertian( pertext ));
+
+	int ns = 1000;
+	for (int j = 0; j < ns; j++) {
+		boxlist2[j] = new sphere(vec3(165*random_double(), 165*random_double(), 165*random_double()), 10, white);
+	}
+	list[l++] = new translate(new rotate_y(new bvh_node(boxlist2, ns, 0.0, 1.0), 15), vec3(-100,270,395));
+
+	return new hittable_list(list,l);
 }
 
 
