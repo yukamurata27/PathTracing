@@ -24,6 +24,17 @@ vec3 random_in_unit_sphere() {
 	return p;
 }
 
+// Get a point on the unit sphere (not in but on)
+vec3 random_on_unit_sphere() {
+	vec3 p;
+
+	do {
+		p = 2.0*vec3(random_double(), random_double(), random_double()) - vec3(1,1,1);
+	} while (dot(p,p) >= 1.0);
+	
+	return unit_vector(p);
+}
+
 vec3 reflect(const vec3& v, const vec3& n) {
 	// R+L = 2*dot(L, N)*N
 	// R = -L + 2*dot(L, N)*N where V = -L

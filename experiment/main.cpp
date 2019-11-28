@@ -3,10 +3,12 @@
 #include <math.h>
 
 #include "../include/random.h"
+#include "../include/vec3.h"
 
 inline float pdf  (float x) { return 0.5 * x; } // p(x) = x/2
 inline float pdf_2(float x) { return 0.5; }     // p(x) = 1/2
 inline float pdf_3(float x) { return 3*x*x/8; } // p(x) = 3/8 * x^2
+inline float pdf_4(const vec3& p) { return 1 / (4*M_PI); }
 
 void random_limited_iteration();
 void random_forever_iteration();
@@ -15,6 +17,8 @@ void monte_carlo();
 void nonuniform_sample();
 void uniform_sample();
 void nonuniform_sample_2();
+void sphere_example();
+vec3 random_on_unit_sphere_test();
 
 
 int main() {
@@ -27,7 +31,9 @@ int main() {
 	//monte_carlo();         // Returns I = 2.66587
 	//nonuniform_sample();   // Returns I = 2.66726
 	//uniform_sample();      // Returns I = 2.66587
-	nonuniform_sample_2(); // Returns I = 2.66667!
+	//nonuniform_sample_2(); // Returns I = 2.66667!
+
+	sphere_example();
 }
 
 
@@ -158,6 +164,27 @@ void nonuniform_sample_2() {
 		sum += x*x / pdf_3(x);
 	}
 	std::cout << "I =" << sum/N << "\n";
+}
+
+void sphere_example() {
+	int N = 1000000;
+	float sum;
+	for (int i = 0; i < N; i++) {
+		vec3 d = random_on_unit_sphere_test();
+		float cosine_squared = d.z()*d.z();
+		sum += cosine_squared / pdf_4(d);
+	}
+	std::cout << "I =" << sum/N << "\n";
+}
+
+vec3 random_on_unit_sphere_test() {
+	vec3 p;
+
+	do {
+		p = 2.0*vec3(random_double(), random_double(), random_double()) - vec3(1,1,1);
+	} while (dot(p,p) >= 1.0);
+	
+	return unit_vector(p);
 }
 
 
