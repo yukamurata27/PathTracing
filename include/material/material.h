@@ -3,10 +3,18 @@
 
 #include "../random.h"
 //#include "../vec3.h"
+#include "../pdf/cosine_pdf.h"
+
+struct scatter_record {
+	ray specular_ray;
+	bool is_specular;
+	vec3 attenuation;
+	pdf *pdf_ptr;
+};
 
 class material {
 	public:
-		virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& albedo, ray& scattered, float& pdf) const {
+		virtual bool scatter(const ray& r_in, const hit_record& hrec, scatter_record& srec) const {
 			return false;
 		}
 
@@ -18,16 +26,6 @@ class material {
 			return vec3(0,0,0);
 		}
 };
-
-inline vec3 random_cosine_direction() {
-	float r1 = random_double();
-	float r2 = random_double();
-	float z = sqrt(1-r2);
-	float phi = 2*M_PI*r1;
-	float x = cos(phi)*sqrt(r2);
-	float y = sin(phi)*sqrt(r2);
-	return vec3(x, y, z);
-}
 
 vec3 random_in_unit_sphere() {
 	vec3 p;

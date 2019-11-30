@@ -4,6 +4,7 @@
 #include "../ray.h"
 #include "../aabb.h"
 #include "../random.h"
+#include "../onb.h"
 
 class material;
 

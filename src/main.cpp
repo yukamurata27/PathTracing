@@ -33,7 +33,7 @@
 #include "../include/texture/noise_texture.h"
 #include "../include/texture/image_texture.h"
 
-#include "../include/pdf/cosine_pdf.h"
+//#include "../include/pdf/cosine_pdf.h"
 #include "../include/pdf/hittable_pdf.h"
 #include "../include/pdf/mixture_pdf.h"
 
@@ -53,7 +53,8 @@ enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_sphere
 /* Function prototypes */
 hittable *get_world(scene s);
 camera set_camera(scene s, int nx, int ny);
-vec3 color(const ray& r, hittable *world, int depth);
+vec3 color(const ray& r, hittable *world, hittable *light_shape, int depth)
+;
 
 hittable *random_scene();
 hittable *moving_spheres_zoomin();
@@ -118,6 +119,8 @@ int main(int argc, char * argv[]) {
 
 	hittable *world = get_world(s);
 	camera cam = set_camera(s, nx, ny);
+	hittable *light_shape = new xz_rect(213, 343, 227, 332, 554, 0);
+	hittable *glass_sphere = new sphere(vec3(190, 90, 190), 90, 0);
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
@@ -129,7 +132,10 @@ int main(int argc, char * argv[]) {
 				float u = float(i + random_double()) / float(nx);
 				float v = float(j + random_double()) / float(ny);
 				ray r = cam.get_ray(u, v);
-				col += color(r, world, 0);
+				//vec3 p = r.point_at_parameter(2.0);
+				
+				//col += color(r, world, light_shape, 0);
+				col += color(r, world, glass_sphere, 0);
 			}
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
@@ -151,6 +157,43 @@ int main(int argc, char * argv[]) {
 
 	cout << "Path Tracer Completed!" << endl;
 	return 0;
+}
+
+vec3 color(const ray& r, hittable *world, hittable *light_shape, int depth) {
+	hit_record hrec;
+
+	if (world->hit(r, 0.001, MAXFLOAT, hrec)) {
+		scatter_record srec;
+		vec3 emitted = hrec.mat_ptr->emitted(r, hrec, hrec.u, hrec.v, hrec.p);
+		
+		if (depth < 50 && hrec.mat_ptr->scatter(r, hrec, srec)) {
+			if (srec.is_specular) {
+				// On specular surface, color is only collected from the reflected direction
+				return srec.attenuation * color(srec.specular_ray, world, light_shape, depth+1);
+			} else {
+				hittable_pdf plight(light_shape, hrec.p);
+				mixture_pdf p(&plight, srec.pdf_ptr);
+				ray scattered = ray(hrec.p, p.generate(), r.time());
+				float pdf_val = p.value(scattered.direction());
+				return emitted
+					+ srec.attenuation * hrec.mat_ptr->scattering_pdf(r, hrec, scattered)
+										* color(scattered, world, light_shape, depth+1)
+										/ pdf_val;
+			}
+		}
+		else return emitted;	
+	} else {
+		if (use_ambient) {
+			// Sky color is a linear interpolation b/w while & blue
+			vec3 unit_direction = unit_vector(r.direction());
+
+			// t is a mapped y from [-1, 1] to [0, 1]
+			// more accurately, t = 0.5 * (sqrt(2)*unit_direction.y() + 1.0)
+			float t = 0.5 * (unit_direction.y() + 1.0);
+
+			return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+		} else return vec3(0,0,0);
+	}
 }
 
 hittable *get_world(scene s) {
@@ -219,45 +262,6 @@ camera set_camera(scene s, int nx, int ny) {
 			aperture = 0.0;
 			vfov = 20.0;
 			return camera(lookfrom, lookat, vec3(0,1,0), vfov, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
-	}
-}
-
-vec3 color(const ray& r, hittable *world, int depth) {
-	hit_record rec;
-	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
-		ray scattered;
-		vec3 attenuation;
-		vec3 emitted = rec.mat_ptr->emitted(r, rec, rec.u, rec.v, rec.p); // Light emission
-		float pdf_val;
-		vec3 albedo;
-		
-		// Simply add emission from the material to all
-		if (depth < 50 && rec.mat_ptr->scatter(r, rec, albedo, scattered, pdf_val)) {
-			hittable *light_shape = new xz_rect(213, 343, 227, 332, 554, 0);
-
-			hittable_pdf p0(light_shape, rec.p);
-			cosine_pdf p1(rec.normal);
-			mixture_pdf p(&p0, &p1);
-
-			scattered = ray(rec.p, p.generate(), r.time());
-			pdf_val = p.value(scattered.direction());
-			
-			//if (texture_map) return emitted + attenuation;
-			//else return emitted + attenuation*color(scattered, world, depth+1);
-			return emitted + albedo*rec.mat_ptr->scattering_pdf(r, rec, scattered)*color(scattered, world, depth+1) / pdf_val;
-		} else
-			return emitted;		
-	} else {
-		if (use_ambient) {
-			// Sky color is a linear interpolation b/w while & blue
-			vec3 unit_direction = unit_vector(r.direction());
-
-			// t is a mapped y from [-1, 1] to [0, 1]
-			// more accurately, t = 0.5 * (sqrt(2)*unit_direction.y() + 1.0)
-			float t = 0.5 * (unit_direction.y() + 1.0);
-
-			return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
-		} else return vec3(0,0,0);
 	}
 }
 
@@ -404,8 +408,9 @@ hittable *cornell_box() {
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
 					vec3(130,0,65));
+	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
-					new rotate_y(new box(vec3(0,0,0), vec3(165,330,165), white), 15),
+					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), aluminum),  15),
 					vec3(265,0,295));
 
 	return new hittable_list(list,i);
