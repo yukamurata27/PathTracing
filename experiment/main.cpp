@@ -10,6 +10,16 @@ inline float pdf_2(float x) { return 0.5; }     // p(x) = 1/2
 inline float pdf_3(float x) { return 3*x*x/8; } // p(x) = 3/8 * x^2
 inline float pdf_4(const vec3& p) { return 1 / (4*M_PI); }
 
+inline vec3 random_cosine_direction() {
+	float r1 = random_double();
+	float r2 = random_double();
+	float z = sqrt(1-r2);
+	float phi = 2*M_PI*r1;
+	float x = cos(phi)*sqrt(r2);
+	float y = sin(phi)*sqrt(r2);
+	return vec3(x, y, z);
+}
+
 void random_limited_iteration();
 void random_forever_iteration();
 void stratified();
@@ -18,6 +28,10 @@ void nonuniform_sample();
 void uniform_sample();
 void nonuniform_sample_2();
 void sphere_example();
+
+void random_direction_on_hemisphere();
+void random_direction_on_hemisphere_rand_in_cosine();
+
 vec3 random_on_unit_sphere_test();
 
 
@@ -33,7 +47,10 @@ int main() {
 	//uniform_sample();      // Returns I = 2.66587
 	//nonuniform_sample_2(); // Returns I = 2.66667!
 
-	sphere_example();
+	//sphere_example();
+
+	//random_direction_on_hemisphere();
+	random_direction_on_hemisphere_rand_in_cosine();
 }
 
 
@@ -177,6 +194,32 @@ void sphere_example() {
 	std::cout << "I =" << sum/N << "\n";
 }
 
+void random_direction_on_hemisphere() {
+	int N = 1000000;
+	float sum = 0.0;
+	for (int i = 0; i < N; i++) {
+		float r1 = random_double();
+		float r2 = random_double();
+		float x = cos(2*M_PI*r1)*2*sqrt(r2*(1-r2));
+		float y = sin(2*M_PI*r1)*2*sqrt(r2*(1-r2));
+		float z = 1 - r2;
+		sum += z*z*z / (1.0/(2.0*M_PI));
+	}
+	std::cout << "PI/2 = " << M_PI/2 << "\n";
+	std::cout << "Estimate = " << sum/N << "\n";
+}
+
+void random_direction_on_hemisphere_rand_in_cosine() {
+	int N = 1000000;
+	float sum = 0.0;
+	for (int i = 0; i < N; i++) {
+		vec3 v = random_cosine_direction();
+		sum += v.z()*v.z()*v.z() / (v.z()/(M_PI));
+	}
+	std::cout << "PI/2 = " << M_PI/2 << "\n";
+	std::cout << "Estimate = " << sum/N << "\n";
+}
+
 vec3 random_on_unit_sphere_test() {
 	vec3 p;
 
@@ -186,6 +229,7 @@ vec3 random_on_unit_sphere_test() {
 	
 	return unit_vector(p);
 }
+
 
 
 

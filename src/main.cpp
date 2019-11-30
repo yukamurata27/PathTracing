@@ -61,6 +61,8 @@ hittable *cornell_box();
 hittable *cornell_smoke();
 hittable *final();
 
+//void cornell_box(hittable **scene, camera **cam, float aspect);
+
 
 /*
  * main
@@ -88,13 +90,17 @@ int main(int argc, char * argv[]) {
 	else use_ambient = true;
 
 	int nx, ny;
-	if (s == cornell_box_s || s == cornell_smoke_s || s == final_s) {
+	if (s == cornell_smoke_s || s == final_s) {
 		nx = 300;
 		ny = 300;
+	} else if (s == cornell_box_s) {
+		nx = 500;
+		ny = 500;
 	} else {
 		nx = 500; //200;
 		ny = 300; //100;
 	}
+
 	int ns = 100;
 
 	ofstream outfile;
@@ -217,14 +223,30 @@ vec3 color(const ray& r, hittable *world, int depth) {
 	if (world->hit(r, 0.001, MAXFLOAT, rec)) {
 		ray scattered;
 		vec3 attenuation;
-		vec3 emitted = rec.mat_ptr->emitted(rec.u, rec.v, rec.p); // Light emission
+		vec3 emitted = rec.mat_ptr->emitted(r, rec, rec.u, rec.v, rec.p); // Light emission
+		float pdf;
+		vec3 albedo;
 		
 		// Simply add emission from the material to all
-		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+		if (depth < 50 && rec.mat_ptr->scatter(r, rec, albedo, scattered, pdf)) {
+			// Hard code to target light
+			vec3 on_light = vec3(213 + random_double()*(343-213),
+								 554,
+								 227 + random_double()*(332-227));
+			vec3 to_light = on_light - rec.p;
+			float distance_squared = to_light.squared_length();
+			to_light.make_unit_vector();
+			if (dot(to_light, rec.normal) < 0) return emitted;
+			float light_area = (343-213)*(332-227);
+			float light_cosine = fabs(to_light.y());
+			if (light_cosine < 0.000001) return emitted;
+			pdf = distance_squared / (light_cosine * light_area);
+			scattered = ray(rec.p, to_light, r.time());
+			
 			//if (texture_map) return emitted + attenuation;
 			//else return emitted + attenuation*color(scattered, world, depth+1);
-			return emitted + attenuation*color(scattered, world, depth+1);
-		else
+			return emitted + albedo*rec.mat_ptr->scattering_pdf(r, rec, scattered)*color(scattered, world, depth+1) / pdf;
+		} else
 			return emitted;		
 	} else {
 		if (use_ambient) {
@@ -374,7 +396,7 @@ hittable *cornell_box() {
 
 	list[i++] = new flip_normals(new yz_rect(0, 555, 0, 555, 555, green));
 	list[i++] = new yz_rect(0, 555, 0, 555, 0, red);
-	list[i++] = new xz_rect(213, 343, 227, 332, 554, light);
+	list[i++] = new flip_normals(new xz_rect(213, 343, 227, 332, 554, light));
 	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
 	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
 	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
@@ -468,6 +490,38 @@ hittable *final() {
 
 	return new hittable_list(list,l);
 }
+
+/*
+void cornell_box(hittable **scene, camera **cam, float aspect) {
+	int i = 0;
+	hittable **list = new hittable*[8];
+
+	material *red = new lambertian( new constant_texture(vec3(0.65, 0.05, 0.05)) );
+	material *white = new lambertian( new constant_texture(vec3(0.73, 0.73, 0.73)) );
+	material *green = new lambertian( new constant_texture(vec3(0.12, 0.45, 0.15)) );
+	material *light = new diffuse_light( new constant_texture(vec3(15, 15, 15)) );
+
+	list[i++] = new flip_normals(new yz_rect(0, 555, 0, 555, 555, green));
+	list[i++] = new yz_rect(0, 555, 0, 555, 0, red);
+	list[i++] = new xz_rect(213, 343, 227, 332, 554, light);
+	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
+	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
+	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+	list[i++] = new translate(new rotate_y(
+		new box(vec3(0, 0, 0), vec3(165, 165, 165), white), -18), vec3(130,0,65));
+	list[i++] = new translate(new rotate_y(
+		new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15), vec3(265,0,295));
+
+	*scene = new hittable_list(list, i);
+	vec3 lookfrom(278, 278, -800);
+	vec3 lookat(278, 278, 0);
+	float dist_to_focus = 10.0;
+	float aperture = 0.0;
+	float vfov = 40.0;
+	*cam = new camera(lookfrom, lookat, vec3(0,1,0),
+					vfov, aspect, aperture, dist_to_focus, 0.0, 1.0);
+}
+*/
 
 
 
