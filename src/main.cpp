@@ -43,6 +43,14 @@
 
 using namespace std;
 
+inline vec3 de_nan(const vec3& c) {
+	vec3 temp = c;
+	if (!(temp[0] == temp[0])) temp[0] = 0;
+	if (!(temp[1] == temp[1])) temp[1] = 0;
+	if (!(temp[2] == temp[2])) temp[2] = 0;
+	return temp;
+}
+
 
 /* Global variables */
 bool texture_map;
@@ -119,8 +127,13 @@ int main(int argc, char * argv[]) {
 
 	hittable *world = get_world(s);
 	camera cam = set_camera(s, nx, ny);
+
 	hittable *light_shape = new xz_rect(213, 343, 227, 332, 554, 0);
 	hittable *glass_sphere = new sphere(vec3(190, 90, 190), 90, 0);
+	hittable *a[2];
+	a[0] = light_shape;
+	a[1] = glass_sphere;
+	hittable_list hlist(a,2);
 
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
@@ -132,10 +145,10 @@ int main(int argc, char * argv[]) {
 				float u = float(i + random_double()) / float(nx);
 				float v = float(j + random_double()) / float(ny);
 				ray r = cam.get_ray(u, v);
-				//vec3 p = r.point_at_parameter(2.0);
+				vec3 p = r.point_at_parameter(2.0);
 				
 				//col += color(r, world, light_shape, 0);
-				col += color(r, world, glass_sphere, 0);
+				col += de_nan(color(r, world, &hlist, 0));
 			}
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
@@ -405,9 +418,13 @@ hittable *cornell_box() {
 	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
 
 	// Two boxes in the room
+	/*
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
 					vec3(130,0,65));
+	*/
+	material *glass = new dielectric(1.5);
+    list[i++] = new sphere(vec3(190, 90, 190),90 , glass);
 	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), aluminum),  15),

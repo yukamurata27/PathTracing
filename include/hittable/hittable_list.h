@@ -11,6 +11,8 @@ class hittable_list: public hittable {
 		// Keep same prototype as the actual virtual function
 		virtual bool hit(const ray& r, float t_min, float t_max, hit_record& rec) const;
 		virtual bool bounding_box(float t0, float t1, aabb& box) const;
+		virtual float pdf_value(const vec3& o, const vec3& v) const;
+		virtual vec3 random(const vec3& o) const;
 
 		hittable **list;
 		int list_size;
@@ -50,6 +52,19 @@ bool hittable_list::bounding_box(float t0, float t1, aabb& box) const {
 	}
 
 	return true;
+}
+
+float hittable_list::pdf_value(const vec3& o, const vec3& v) const {
+	float weight = 1.0/list_size;
+	float sum = 0;
+	for (int i = 0; i < list_size; i++)
+		sum += weight*list[i]->pdf_value(o, v);
+	return sum;
+}
+
+vec3 hittable_list::random(const vec3& o) const {
+	int index = int(random_double() * list_size);
+	return list[ index ]->random(o);
 }
 
 #endif
