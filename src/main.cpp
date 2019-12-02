@@ -114,7 +114,7 @@ int main(int argc, char * argv[]) {
 		ny = 300; //100;
 	}
 
-	int ns = 100;
+	int ns = 1000;
 
 	ofstream outfile;
 	outfile.open ("../rendered_img/output.ppm");
@@ -403,12 +403,16 @@ hittable *simple_light() {
 }
 
 hittable *cornell_box() {
-	hittable **list = new hittable*[8];
+	hittable **list = new hittable*[11];
 	int i = 0;
 	material *red = new lambertian(new constant_texture(vec3(0.65, 0.05, 0.05)));
 	material *white = new lambertian(new constant_texture(vec3(0.73, 0.73, 0.73)));
 	material *green = new lambertian(new constant_texture(vec3(0.12, 0.45, 0.15)));
+	material *yellow = new lambertian(new constant_texture(vec3(1.0, 0.96, 0.31)));
 	material *light = new diffuse_light(new constant_texture(vec3(15, 15, 15)));
+
+	material *turbtext = new lambertian(new noise_texture(0.1));
+	material *pertext = new lambertian(new noise_texture_perlin(0.1));
 
 	// Warm light
 	//material *light = new diffuse_light(new constant_texture(vec3(16.86 + 5.0, 8.76+2.0 + 5.0, 3.2+0.5 + 5.0)));
@@ -422,43 +426,47 @@ hittable *cornell_box() {
 
 	// Two boxes in the room
 	/*
+	// Small box
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
 					vec3(130,0,65));
+	// Tall box
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15),
 					vec3(265,0,295));
 	*/
 
-	// Checker small box
+	// Checker tall box
 	texture *checker = new checker_texture(
 		new constant_texture(vec3(0.2, 0.3, 0.1)),
 		new constant_texture(vec3(0.9, 0.9, 0.9))
 	);
-	material *checker_material = new lambertian(checker);
 	list[i++] = new translate(
-					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), checker_material), -18),
+					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), new lambertian(checker)),  15),
+					vec3(265,0,295));
+
+	// Image textured medium box
+	int nx, ny, nn;
+	unsigned char *tex_data = stbi_load("../texture_img/trojans_flip.png", &nx, &ny, &nn, 0);
+	material *img_mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), img_mat), -18),
 					vec3(130,0,65));
 
+	// Solid small box
 	/*
-	texture *checker = new checker_texture(
-		new constant_texture(vec3(0.2, 0.3, 0.1)),
-		new constant_texture(vec3(0.9, 0.9, 0.9))
-	);
-
-	hittable **list = new hittable*[2];
-	list[0] = new sphere(vec3(0,-10, 0), 10, new lambertian(checker));
-	*/
-
-
-
-
-	/*
-	// box small
 	list[i++] = new translate(
-					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
-					vec3(130,0,65));
+					new rotate_y(new box(vec3(0,0,0), vec3(90,90,90), yellow), 0),
+					vec3(330,0,50));
 	*/
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(80,80,80), yellow), 5),
+					vec3(130,165,70));
+
+	// Noises on sphere
+	list[i++] = new sphere(vec3(380, 0, 180), 100, pertext);
+	list[i++] = new sphere(vec3(340, 30, 60), 40, turbtext);
+
 
 	/*
 	// glass sphere
@@ -467,7 +475,7 @@ hittable *cornell_box() {
     */
 
     /*
-    // box tall
+    // Metal box tall
 	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), aluminum),  15),
