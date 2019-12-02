@@ -147,8 +147,8 @@ int main(int argc, char * argv[]) {
 				ray r = cam.get_ray(u, v);
 				vec3 p = r.point_at_parameter(2.0);
 				
-				//col += color(r, world, light_shape, 0);
-				col += de_nan(color(r, world, &hlist, 0));
+				col += de_nan(color(r, world, light_shape, 0));
+				//col += de_nan(color(r, world, &hlist, 0));
 			}
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
@@ -410,6 +410,9 @@ hittable *cornell_box() {
 	material *green = new lambertian(new constant_texture(vec3(0.12, 0.45, 0.15)));
 	material *light = new diffuse_light(new constant_texture(vec3(15, 15, 15)));
 
+	// Warm light
+	//material *light = new diffuse_light(new constant_texture(vec3(16.86 + 5.0, 8.76+2.0 + 5.0, 3.2+0.5 + 5.0)));
+
 	list[i++] = new flip_normals(new yz_rect(0, 555, 0, 555, 555, green));
 	list[i++] = new yz_rect(0, 555, 0, 555, 0, red);
 	list[i++] = new flip_normals(new xz_rect(213, 343, 227, 332, 554, light));
@@ -422,13 +425,54 @@ hittable *cornell_box() {
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
 					vec3(130,0,65));
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15),
+					vec3(265,0,295));
 	*/
+
+	// Checker small box
+	texture *checker = new checker_texture(
+		new constant_texture(vec3(0.2, 0.3, 0.1)),
+		new constant_texture(vec3(0.9, 0.9, 0.9))
+	);
+	material *checker_material = new lambertian(checker);
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), checker_material), -18),
+					vec3(130,0,65));
+
+	/*
+	texture *checker = new checker_texture(
+		new constant_texture(vec3(0.2, 0.3, 0.1)),
+		new constant_texture(vec3(0.9, 0.9, 0.9))
+	);
+
+	hittable **list = new hittable*[2];
+	list[0] = new sphere(vec3(0,-10, 0), 10, new lambertian(checker));
+	*/
+
+
+
+
+	/*
+	// box small
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
+					vec3(130,0,65));
+	*/
+
+	/*
+	// glass sphere
 	material *glass = new dielectric(1.5);
     list[i++] = new sphere(vec3(190, 90, 190),90 , glass);
+    */
+
+    /*
+    // box tall
 	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), aluminum),  15),
 					vec3(265,0,295));
+	*/
 
 	return new hittable_list(list,i);
 }
