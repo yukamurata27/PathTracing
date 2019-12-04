@@ -115,7 +115,7 @@ int main(int argc, char * argv[]) {
 		ny = 300; //100;
 	}
 
-	int ns = 100;
+	int ns = 1000;
 
 	ofstream outfile;
 	outfile.open ("../rendered_img/output.ppm");
@@ -161,7 +161,7 @@ int main(int argc, char * argv[]) {
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
 			//col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
-			col = vec3( 1.7 * sqrt(col[0]), 1.7 * sqrt(col[1]), 1.7 * sqrt(col[2]) );
+			col = vec3( 1.5 * sqrt(col[0]), 1.5 * sqrt(col[1]), 1.5 * sqrt(col[2]) );
 
 			// Clamp color to [0, 1]
 			for (int channel = 0; channel < 3; channel++)
