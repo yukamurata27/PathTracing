@@ -21,7 +21,7 @@ class noise_texture : public texture {
 			// and use turbulence to adjust the phase - so it shifts x in sin(x) - which makes the stripes undulate
 			//return vec3(1,1,1) * 0.5 * (1 + sin(scale*p.z() + 10*noise.turb(p)));
 
-			return vec3(1,1,1) * 0.5 * (1 + sin(scale*p.x() + 3*noise.turb(scale*p)));
+			return vec3(1,1,1) * 0.5 * (1 + sin(scale*p.x() + 4*noise.turb(scale*p)));
 		}
 
 		perlin noise;
@@ -34,7 +34,7 @@ class noise_texture_perlin : public texture {
 		noise_texture_perlin(float sc) : scale(sc) {}
 
 		virtual vec3 value(float u, float v, const vec3& p) const {
-			return vec3(1,1,1) * noise.noise(scale * p);
+			return vec3(1,1,1) * noise.noise(scale * p * 0.8);
 		}
 
 		perlin noise;

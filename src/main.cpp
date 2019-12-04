@@ -37,6 +37,8 @@
 #include "../include/pdf/hittable_pdf.h"
 #include "../include/pdf/mixture_pdf.h"
 
+#include "../include/hammersley.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "../libs/stb/stb_image.h"
 
@@ -61,8 +63,7 @@ enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_sphere
 /* Function prototypes */
 hittable *get_world(scene s);
 camera set_camera(scene s, int nx, int ny);
-vec3 color(const ray& r, hittable *world, hittable *light_shape, int depth)
-;
+vec3 color(const ray& r, hittable *world, hittable *light_shape, int depth);
 
 hittable *random_scene();
 hittable *moving_spheres_zoomin();
@@ -114,7 +115,7 @@ int main(int argc, char * argv[]) {
 		ny = 300; //100;
 	}
 
-	int ns = 1000;
+	int ns = 100;
 
 	ofstream outfile;
 	outfile.open ("../rendered_img/output.ppm");
@@ -135,12 +136,19 @@ int main(int argc, char * argv[]) {
 	a[1] = glass_sphere;
 	hittable_list hlist(a,2);
 
+	hammersley * hm = new hammersley();
+	double *hammersley_point;
+
 	// Send a ray out of eye (0, 0, 0) from BL to UR corner
 	for (int j = ny-1; j >= 0; j--) {
 		for (int i = 0; i < nx; i++) {
 			// Super sampling
 			vec3 col(0, 0, 0);
 			for (int s = 0; s < ns; s++) {
+				//hammersley_point = hm->get_hammersley(s+1, 2, ns);
+				//float u = float(i + hammersley_point[0]) / float(nx);
+				//float v = float(j + hammersley_point[1]) / float(ny);
+				
 				// Offset by random_double value [0, 1)
 				float u = float(i + random_double()) / float(nx);
 				float v = float(j + random_double()) / float(ny);
@@ -152,7 +160,8 @@ int main(int argc, char * argv[]) {
 			}
 			col /= float(ns); // average sum
 			// gamma correction (brighter color)
-			col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
+			//col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
+			col = vec3( 1.7 * sqrt(col[0]), 1.7 * sqrt(col[1]), 1.7 * sqrt(col[2]) );
 
 			// Clamp color to [0, 1]
 			for (int channel = 0; channel < 3; channel++)
@@ -424,8 +433,8 @@ hittable *cornell_box() {
 	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
 	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
 
+
 	// Two boxes in the room
-	/*
 	// Small box
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
@@ -434,8 +443,10 @@ hittable *cornell_box() {
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15),
 					vec3(265,0,295));
-	*/
 
+
+	/////// All textures //////////
+	/*
 	// Checker tall box
 	texture *checker = new checker_texture(
 		new constant_texture(vec3(0.2, 0.3, 0.1)),
@@ -454,19 +465,14 @@ hittable *cornell_box() {
 					vec3(130,0,65));
 
 	// Solid small box
-	/*
 	list[i++] = new translate(
-					new rotate_y(new box(vec3(0,0,0), vec3(90,90,90), yellow), 0),
-					vec3(330,0,50));
-	*/
-	list[i++] = new translate(
-					new rotate_y(new box(vec3(0,0,0), vec3(80,80,80), yellow), 5),
-					vec3(130,165,70));
+					new rotate_y(new box(vec3(0,0,0), vec3(70,70,70), yellow), 5),
+					vec3(200,165,120));
 
 	// Noises on sphere
 	list[i++] = new sphere(vec3(380, 0, 180), 100, pertext);
-	list[i++] = new sphere(vec3(340, 30, 60), 40, turbtext);
-
+	list[i++] = new rotate_y(new sphere(vec3(280, 40, 150), 40, turbtext), 15);
+	*/
 
 	/*
 	// glass sphere
@@ -474,11 +480,28 @@ hittable *cornell_box() {
     list[i++] = new sphere(vec3(190, 90, 190),90 , glass);
     */
 
-    /*
+
     // Metal box tall
+    /*
 	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), aluminum),  15),
+					vec3(265,0,295));
+	*/
+
+
+
+	////////// Last image //////////
+	/*
+	int nx, ny, nn;
+	unsigned char *tex_data = stbi_load("../texture_img/thankyou.png", &nx, &ny, &nn, 0);
+	material *img_mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, img_mat));
+
+	tex_data = stbi_load("../texture_img/tommy.jpg", &nx, &ny, &nn, 0);
+	img_mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), img_mat),  15),
 					vec3(265,0,295));
 	*/
 
