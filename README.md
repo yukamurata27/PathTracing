@@ -60,6 +60,10 @@ g++ -std=c++11 main.cpp -o main
 ![Textures](sample_img/textures.png)
 
 
+## Timelapse
+![Timelapse](https://drive.google.com/file/d/1ln0O2g_BJCROY4y0qXaoYnyTMydOgzsG/view?usp=sharing)
+
+
 ## Document
 1) Please find the final report on this [path tracer](http://bit.ly/ymurata-mcpt-report)
 2) CUDA GUP acceleration for this project is developed [here](https://github.com/nfnu/Path-Tracing-with-GPU-Acceleration-using-CUDA/tree/master)
