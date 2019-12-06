@@ -1,4 +1,6 @@
-# Path Tracing in One Weekend
+# Monte Carlo Path Tracing
+A C++ renderer implemented as part of the USC CSCI 580 final project. 
+
 
 ## Features
 #### 1) Materials
@@ -24,8 +26,10 @@
 - Metal surface
 - Glass sphere
 
+
 ## Environment
 Implementation was done in MacOS Catalina.
+
 
 ## Building
 #### 1) Open Terminal and go to the project directory.
@@ -38,12 +42,14 @@ cd src
 g++ -std=c++11 main.cpp -o main
 ```
 
+
 ## Usage
 #### 1) In the src directory, execute:
 ```
 ./main
 ```
 #### 2) The rendered image will be stored in the rendered_img folder.
+
 
 ## Sample Rendering Results
 #### 1) Cornell Box (1000 samples/px)
@@ -53,8 +59,14 @@ g++ -std=c++11 main.cpp -o main
 #### 3) Textures (1000 samples/px)
 ![Textures](sample_img/textures.png)
 
+
+## Document
+1) Please find the final report on this [path tracer](http://bit.ly/ymurata-mcpt-report)
+2) CUDA GUP acceleration for this project is developed [here](https://github.com/nfnu/Path-Tracing-with-GPU-Acceleration-using-CUDA/tree/master)
+
 ## Library
 1) [stb for texture image loader](https://github.com/nothings/stb)
+
 
 ## References
 1) [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)
