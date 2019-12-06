@@ -1,5 +1,26 @@
 # Path Tracing in One Weekend
 
+## Features
+1) Materials
+- Lambertian
+- Metal
+- Dielectric
+- Volume
+2) Textures
+- Constant
+- Checker
+- Image
+- Perlin noise
+- Turbulence
+3) Camera Effects
+- Motion blur
+- Defocus blur
+4) Monte Carlo and Importance Sampling
+- Cosine sampling for diffuse surface
+- Direct light sampling
+- Metal surface
+- Glass sphere
+
 ## Environment
 Implementation was done in MacOS Catalina.
 
@@ -20,6 +41,14 @@ g++ -std=c++11 main.cpp -o main
 ./main
 ```
 2) The rendered image will be stored in the rendered_img folder.
+
+## Sample Rendering Results
+#### 1) Cornell Box (1000 samples/px)
+![Cornell Box](rendered_img/warmlight_MC_1000_gamma_1.5.ppm)
+#### 2) Metal and Glass (1000 samples/px)
+![Metal and Glass](rendered_img/metal&glass_MC_1000.ppm)
+#### 3) Textures (1000 samples/px)
+![Textures](rendered_img/textures_MC_1000.ppm)
 
 ## Library
 1) [stb for texture image loader](https://github.com/nothings/stb)
