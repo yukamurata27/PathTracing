@@ -53,15 +53,15 @@ g++ -std=c++11 main.cpp -o main
 
 ## Sample Rendering Results
 #### 1) Cornell Box (1000 samples/px)
-![Cornell Box](sample_img/cornell_box.png)
+![Cornell Box](readme_content/cornell_box.png)
 #### 2) Metal and Glass (1000 samples/px)
-![Metal and Glass](sample_img/metal_and_glass.png)
+![Metal and Glass](readme_content/metal_and_glass.png)
 #### 3) Textures (1000 samples/px)
-![Textures](sample_img/textures.png)
+![Textures](readme_content/textures.png)
 
 
 ## Timelapse
-[![Timelapse](sample_img/video_img.png)](https://drive.google.com/file/d/1ln0O2g_BJCROY4y0qXaoYnyTMydOgzsG/view?usp=sharing)
+[![Timelapse](readme_content/video_img.png)](https://drive.google.com/file/d/1ln0O2g_BJCROY4y0qXaoYnyTMydOgzsG/view?usp=sharing)
 
 ## Document
 1) [Final report](http://bit.ly/ymurata-mcpt-report)
