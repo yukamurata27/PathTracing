@@ -1,5 +1,5 @@
 # Monte Carlo Path Tracing
-A C++ renderer implemented as part of the USC CSCI 580 final project. 
+A C++ renderer implemented as part of the USC CSCI 580 final project in Fall 2019. 
 
 
 ## Features
