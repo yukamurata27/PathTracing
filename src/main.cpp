@@ -431,10 +431,24 @@ hittable *cornell_box() {
 	list[i++] = new flip_normals(new xz_rect(213, 343, 227, 332, 554, light));
 	list[i++] = new flip_normals(new xz_rect(0, 555, 0, 555, 555, white));
 	list[i++] = new xz_rect(0, 555, 0, 555, 0, white);
-	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+	//list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, white));
+
+
+	////////////// Last shot /////////////////
+	int nx, ny, nn;
+	unsigned char *tex_data = stbi_load("../texture_img/thankyou.jpg", &nx, &ny, &nn, 0);
+	material *img_mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[i++] = new flip_normals(new xy_rect(0, 555, 0, 555, 555, img_mat));
+
+	tex_data = stbi_load("../texture_img/bunny.jpg", &nx, &ny, &nn, 0);
+	img_mat = new lambertian(new image_texture(tex_data, nx, ny), texture_map);
+	list[i++] = new translate(
+					new rotate_y(new box(vec3(0,0,0), vec3(120,120,120), img_mat), -18),
+					vec3(130,0,200));
 
 
 	// Two boxes in the room
+	/*
 	// Small box
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), white), -18),
@@ -443,10 +457,14 @@ hittable *cornell_box() {
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0, 0, 0), vec3(165, 330, 165), white),  15),
 					vec3(265,0,295));
+	*/
 
 
-	/////// All textures //////////
+	////////////// All textures /////////////////
 	/*
+	material *turbtext = new lambertian(new noise_texture(0.1));
+	material *pertext = new lambertian(new noise_texture_perlin(0.1));
+
 	// Checker tall box
 	texture *checker = new checker_texture(
 		new constant_texture(vec3(0.2, 0.3, 0.1)),
@@ -464,24 +482,29 @@ hittable *cornell_box() {
 					new rotate_y(new box(vec3(0,0,0), vec3(165,165,165), img_mat), -18),
 					vec3(130,0,65));
 
+	// Noises on sphere
+	list[i++] = new sphere(vec3(380, 0, 180), 100, pertext);
+	//list[i++] = new rotate_y(new sphere(vec3(280, 40, 150), 40, turbtext), 15);
+
+	// Turbulence floor
+	list[i++] = new xz_rect(0, 555, 0, 555, 0, turbtext);
+	*/
+
 	// Solid small box
+	/*
 	list[i++] = new translate(
 					new rotate_y(new box(vec3(0,0,0), vec3(70,70,70), yellow), 5),
 					vec3(200,165,120));
-
-	// Noises on sphere
-	list[i++] = new sphere(vec3(380, 0, 180), 100, pertext);
-	list[i++] = new rotate_y(new sphere(vec3(280, 40, 150), 40, turbtext), 15);
 	*/
 
 	/*
-	// glass sphere
+	////////////// glass sphere //////////////
 	material *glass = new dielectric(1.5);
     list[i++] = new sphere(vec3(190, 90, 190),90 , glass);
     */
 
 
-    // Metal box tall
+    ////////////// Metal box tall //////////////
     /*
 	material *aluminum = new metal(vec3(0.8, 0.85, 0.88), 0.0);
 	list[i++] = new translate(
