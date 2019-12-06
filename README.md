@@ -44,11 +44,11 @@ g++ -std=c++11 main.cpp -o main
 
 ## Sample Rendering Results
 #### 1) Cornell Box (1000 samples/px)
-![Cornell Box](rendered_img/warmlight_MC_1000_gamma_1.5.ppm)
+![Cornell Box](sample_img/cornell_box.png)
 #### 2) Metal and Glass (1000 samples/px)
-![Metal and Glass](rendered_img/metal&glass_MC_1000.ppm)
+![Metal and Glass](sample_img/metal_and_glass.png)
 #### 3) Textures (1000 samples/px)
-![Textures](rendered_img/textures_MC_1000.ppm)
+![Textures](sample_img/textures.png)
 
 ## Library
 1) [stb for texture image loader](https://github.com/nothings/stb)
