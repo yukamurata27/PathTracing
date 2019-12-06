@@ -57,7 +57,17 @@ inline vec3 de_nan(const vec3& c) {
 /* Global variables */
 bool texture_map;
 bool use_ambient;
-enum scene { random_s, moving_spheres_zoomin_s, two_spheres_s, two_perlin_spheres_s, image_texture_s, simple_light_s, cornell_box_s, cornell_smoke_s, final_s };
+enum scene {
+	random_s,
+	moving_spheres_zoomin_s,
+	two_spheres_s,
+	two_perlin_spheres_s,
+	image_texture_s,
+	simple_light_s,
+	cornell_box_s,
+	cornell_smoke_s,
+	final_s
+};
 
 
 /* Function prototypes */
