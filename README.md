@@ -1,21 +1,24 @@
 # Path Tracing in One Weekend
 
 ## Features
-1) Materials
+#### 1) Materials
 - Lambertian
 - Metal
 - Dielectric
 - Volume
-2) Textures
+
+#### 2) Textures
 - Constant
 - Checker
 - Image
 - Perlin noise
 - Turbulence
-3) Camera Effects
+
+#### 3) Camera Effects
 - Motion blur
 - Defocus blur
-4) Monte Carlo and Importance Sampling
+
+#### 4) Monte Carlo and Importance Sampling
 - Cosine sampling for diffuse surface
 - Direct light sampling
 - Metal surface
@@ -25,22 +28,22 @@
 Implementation was done in MacOS Catalina.
 
 ## Building
-1) Open Terminal and go to the project directory.
-2) Then go to the src directory:
+#### 1) Open Terminal and go to the project directory.
+#### 2) Then go to the src directory:
 ```
 cd src
 ```
-2) Finally compile:
+#### 3) Finally compile:
 ```
 g++ -std=c++11 main.cpp -o main
 ```
 
 ## Usage
-1) In the src directory, execute:
+#### 1) In the src directory, execute:
 ```
 ./main
 ```
-2) The rendered image will be stored in the rendered_img folder.
+#### 2) The rendered image will be stored in the rendered_img folder.
 
 ## Sample Rendering Results
 #### 1) Cornell Box (1000 samples/px)
