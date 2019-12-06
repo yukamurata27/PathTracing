@@ -61,7 +61,6 @@ g++ -std=c++11 main.cpp -o main
 
 
 ## Timelapse
-![Timelapse](https://drive.google.com/file/d/1ln0O2g_BJCROY4y0qXaoYnyTMydOgzsG/view?usp=sharing)
 [![Timelapse](sample_img/video_img.png)](https://drive.google.com/file/d/1ln0O2g_BJCROY4y0qXaoYnyTMydOgzsG/view?usp=sharing)
 
 ## Document
